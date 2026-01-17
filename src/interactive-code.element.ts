@@ -197,17 +197,12 @@ export class InteractiveCodeElement extends HTMLElement {
           const binding = this.bindings.get(key);
           if (binding) {
             const newValue = target.valueAsNumber || 0;
-            (binding as any)._value = newValue;
             const valueSpan = target.parentElement?.querySelector('.token-number');
             if (valueSpan) {
               valueSpan.textContent = String(newValue);
             }
             this._internalChange = true;
-            binding.dispatchEvent(new CustomEvent('change', {
-              detail: newValue,
-              bubbles: true,
-              composed: true
-            }));
+            binding.value = newValue;
             this._internalChange = false;
           }
         }
@@ -223,17 +218,12 @@ export class InteractiveCodeElement extends HTMLElement {
           const binding = this.bindings.get(key);
           if (binding) {
             const newValue = target.value;
-            (binding as any)._value = newValue;
             const valueSpan = target.parentElement?.querySelector('.token-string');
             if (valueSpan) {
               valueSpan.textContent = `'${newValue}'`;
             }
             this._internalChange = true;
-            binding.dispatchEvent(new CustomEvent('change', {
-              detail: newValue,
-              bubbles: true,
-              composed: true
-            }));
+            binding.value = newValue;
             this._internalChange = false;
           }
         }
@@ -248,7 +238,9 @@ export class InteractiveCodeElement extends HTMLElement {
         if (key) {
           const binding = this.bindings.get(key);
           if (binding) {
+            this._internalChange = true;
             binding.value = target.value;
+            this._internalChange = false;
           }
         }
       }
@@ -418,8 +410,14 @@ export class InteractiveCodeElement extends HTMLElement {
     result = result.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="token-comment">$1</span>');
     result = result.replace(/(&lt;\/?)([\w-]+)/g, '<span class="token-tag">$1$2</span>');
     result = result.replace(/(\/?&gt;)/g, '<span class="token-tag">$1</span>');
+    // Highlight key attribute with special binding color (only the value, not quotes)
     result = result.replace(
-      /(\[[\w.-]+\]|\([\w.-]+\)|[\w-]+)(=)(&quot;[^"]*&quot;)/g,
+      /(key)(=)(&quot;)(.*?)(&quot;)/g,
+      '<span class="token-attr-name">$1</span><span class="token-punctuation">$2</span><span class="token-attr-value">$3</span><span class="token-binding-key">$4</span><span class="token-attr-value">$5</span>'
+    );
+    // Highlight other attributes
+    result = result.replace(
+      /(\[[\w.-]+\]|\([\w.-]+\)|[\w-]+)(=)(&quot;[^"]*&quot;)(?![^<]*<\/span>)/g,
       '<span class="token-attr-name">$1</span><span class="token-punctuation">$2</span><span class="token-attr-value">$3</span>'
     );
     return result;
@@ -563,7 +561,8 @@ export class InteractiveCodeElement extends HTMLElement {
       .token-class-name { color: #4ec9b0; }
       .token-template-string { color: #ce9178; }
       .token-value { color: #d4d4d4; }
-      .token-unknown { color: #f44747; }
+      .token-unknown { color: #4ec9b0; }
+      .token-binding-key { color: #4ec9b0; }
 
       /* Interactive controls */
       .inline-control {

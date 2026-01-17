@@ -24,7 +24,10 @@
     "build": "vite build && npm run build:types",
     "build:types": "tsc --emitDeclarationOnly --declaration --declarationDir types",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -50,8 +53,11 @@
   "author": "Softwarity",
   "license": "MIT",
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.17",
+    "happy-dom": "^20.3.1",
     "minify-literals": "^1.0.10",
     "typescript": "^5.9.3",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^4.0.17"
   }
 }
