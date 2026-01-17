@@ -45,7 +45,7 @@ jobs:
           mkdir -p gh-pages
           cp -r demo/* gh-pages/
           # Update paths in demo to use CDN (escape dots in patterns)
-          sed -i 's|\.\./src/tac-editor\.js|https://unpkg.com/@softwarity/interactive-code|g' gh-pages/index.html
+          sed -i 's|\.\./src/interactive-code\.js|https://unpkg.com/@softwarity/interactive-code|g' gh-pages/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
