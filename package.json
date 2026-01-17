@@ -1,0 +1,57 @@
+{
+  "name": "@softwarity/interactive-code",
+  "version": "1.0.0",
+  "description": "A Web Component for displaying syntax-highlighted code with interactive bindings. Supports HTML, SCSS, TypeScript, and Shell with editable values (boolean, number, string, select, color).",
+  "type": "module",
+  "main": "./dist/interactive-code.js",
+  "module": "./dist/interactive-code.js",
+  "unpkg": "./dist/interactive-code.js",
+  "jsdelivr": "./dist/interactive-code.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/interactive-code.js",
+      "types": "./types/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "types"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && npm run build:types",
+    "build:types": "tsc --emitDeclarationOnly --declaration --declarationDir types",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/softwarity/interactive-code.git"
+  },
+  "bugs": {
+    "url": "https://github.com/softwarity/interactive-code/issues"
+  },
+  "homepage": "https://softwarity.github.io/interactive-code/",
+  "keywords": [
+    "code",
+    "syntax-highlighting",
+    "interactive",
+    "web-component",
+    "custom-element",
+    "html",
+    "scss",
+    "typescript",
+    "shell",
+    "documentation",
+    "demo"
+  ],
+  "author": "Softwarity",
+  "license": "MIT",
+  "devDependencies": {
+    "minify-literals": "^1.0.10",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4"
+  }
+}

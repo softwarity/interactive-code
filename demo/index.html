@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@softwarity/interactive-code</title>
+  <link rel="icon" type="image/svg+xml" href="https://www.softwarity.io/img/softwarity.svg">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      --bg-primary: #161b22;
+      --bg-secondary: #21262d;
+      --text-primary: #e6edf3;
+      --text-secondary: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent-blue: #58a6ff;
+      --accent-green: #238636;
+      --accent-purple: #a371f7;
+      --border-color: #30363d;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    a {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+
+    code {
+      font-family: 'Courier New', Consolas, monospace;
+      background-color: var(--bg-secondary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      color: var(--accent-blue);
+    }
+
+    /* Main Layout */
+    .main-content {
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .card-container {
+      width: 100%;
+      max-width: 1200px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Card Header */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-link { display: flex; }
+    .logo {
+      height: 48px;
+      width: auto;
+    }
+
+    .title-block h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-primary);
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .badges img { height: 20px; }
+
+    .nav-links {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .nav-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .nav-button:hover {
+      background-color: rgba(88, 166, 255, 0.1);
+      border-color: var(--accent-blue);
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .github-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .material-icons {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Description */
+    .description {
+      color: var(--text-secondary);
+      margin: 0 0 24px 0;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+      line-height: 1.6;
+    }
+
+    /* Sections */
+    h2 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 32px 0 24px 0;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .doc-section {
+      margin-bottom: 32px;
+    }
+
+    .doc-section h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      color: var(--text-primary);
+    }
+
+    .doc-section h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+      color: var(--text-primary);
+    }
+
+    .doc-section p {
+      color: var(--text-secondary);
+      margin: 0 0 12px 0;
+    }
+
+    ul.feature-list {
+      color: var(--text-secondary);
+      margin: 0 0 16px 0;
+      padding-left: 24px;
+    }
+    ul.feature-list li {
+      margin-bottom: 8px;
+    }
+
+    /* API Table */
+    .api-table-wrapper {
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    .api-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .api-table th, .api-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .api-table th {
+      background-color: rgba(0, 0, 0, 0.2);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .api-table td {
+      color: var(--text-secondary);
+    }
+
+    .api-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Footer */
+    .card-footer {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .card-footer a {
+      color: var(--text-muted);
+      transition: color 0.2s;
+    }
+
+    .card-footer a:hover {
+      color: var(--accent-blue);
+      text-decoration: none;
+    }
+
+    .footer-logo {
+      height: 20px;
+      width: auto;
+    }
+
+    /* Playground styles */
+    .playground {
+      margin-bottom: 32px;
+    }
+
+    .playground interactive-code {
+      display: block;
+      margin: 1rem 0;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #252526;
+      border: 1px solid var(--border-color);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      padding: 8px 16px;
+      margin-top: 1rem;
+    }
+
+    .code-header span {
+      font-family: 'Courier New', Consolas, monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    interactive-code.inline-code {
+      margin: 0;
+      --code-border-radius: 0 0 6px 6px;
+      --code-bg: #1e1e1e;
+      border: 1px solid var(--border-color);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .preview-wrapper {
+      margin: 1rem 0;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .preview-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* User view: code + live element side by side */
+    .user-view {
+      display: flex;
+      gap: 1.5rem;
+      align-items: stretch;
+    }
+
+    .user-view > interactive-code {
+      flex: 1;
+      margin: 0;
+    }
+
+    .live-element {
+      flex: 0 0 auto;
+      min-width: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      border: 1px dashed var(--border-color);
+    }
+
+    /* Legacy live-preview for backward compat */
+    .live-preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 60px;
+      padding: 1rem;
+      background: var(--bg-primary);
+      border-radius: 6px;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .preview-box {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .preview-button {
+      padding: 10px 24px;
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .preview-button:hover {
+      background: #4090e0;
+    }
+
+    .preview-alert {
+      padding: 12px 24px;
+      color: white;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: background 0.2s ease;
+    }
+
+    .preview-card {
+      padding: 16px 24px;
+      background: var(--bg-secondary);
+      border: 3px solid;
+      border-radius: 8px;
+      color: var(--text-primary);
+      transition: border-color 0.2s ease;
+    }
+
+    .preview-element {
+      padding: 16px 24px;
+      background: var(--accent-purple);
+      color: white;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="main-content">
+    <div class="card-container">
+      <!-- Card Header -->
+      <header class="card-header">
+        <div class="header-left">
+          <a href="https://www.softwarity.io/" target="_blank" class="logo-link">
+            <img src="https://www.softwarity.io/img/softwarity.svg" alt="Softwarity" class="logo">
+          </a>
+          <div class="title-block">
+            <h1>@softwarity/interactive-code</h1>
+            <div class="badges">
+              <img src="https://img.shields.io/npm/v/@softwarity/interactive-code.svg" alt="npm version">
+              <img src="https://img.shields.io/badge/license-MIT-blue" alt="license">
+            </div>
+          </div>
+        </div>
+        <nav class="nav-links">
+          <a href="https://github.com/softwarity/interactive-code#readme" target="_blank" class="nav-button">
+            <span class="material-icons">menu_book</span>
+            Documentation
+          </a>
+          <a href="https://github.com/softwarity/interactive-code" target="_blank" class="nav-button">
+            <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            GitHub
+          </a>
+          <a href="https://www.softwarity.io/" target="_blank" class="nav-button">
+            <span class="material-icons">public</span>
+            Softwarity
+          </a>
+          <softwarity-projects></softwarity-projects>
+        </nav>
+      </header>
+
+      <!-- Description -->
+      <p class="description">
+        Web Component for displaying syntax-highlighted code with interactive bindings.
+        Supports HTML, SCSS, TypeScript, and Shell with click-to-edit values.
+      </p>
+
+      <!-- Playground Section -->
+      <section class="playground">
+        <h2>Playground</h2>
+        <p>Click on highlighted values in the code to edit them. Changes emit events you can use to update live elements.</p>
+
+        <!-- Boolean Type -->
+        <article class="doc-section">
+          <h3>Boolean Type</h3>
+          <p>Click on <code>true</code>/<code>false</code> to toggle:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="html">
+  <textarea><label><input type="checkbox" checked="${checked}">Accept terms</label>&lt;/textarea>
+  <code-binding key="checked" type="boolean" value="true"
+    onchange="document.getElementById('preview-checkbox').checked = e"></code-binding>
+</interactive-code>
+
+<label><input id="preview-checkbox" type="checkbox" checked>Accept terms</label></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="html">
+                <textarea><label><input type="checkbox" checked="${checked}">Accept terms</label></textarea>
+                <code-binding key="checked" type="boolean" value="true"
+                  onchange="document.getElementById('preview-checkbox').checked = e"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="preview-checkbox" checked>
+                  Accept terms
+                </label>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Number Type -->
+        <article class="doc-section">
+          <h3>Number Type</h3>
+          <p>Click on a number to edit. Supports <code>min</code>, <code>max</code>, <code>step</code>:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="scss">
+  <textarea>.box { width: ${width}px; height: ${height}px; }&lt;/textarea>
+  <code-binding key="width" type="number" value="120" min="40" max="200" step="10"
+    onchange="document.getElementById('preview-box').style.width = e + 'px'"></code-binding>
+  <code-binding key="height" type="number" value="80" min="40" max="200" step="10"
+    onchange="document.getElementById('preview-box').style.height = e + 'px'"></code-binding>
+</interactive-code>
+
+<div id="preview-box" class="box"></div></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="scss">
+                <textarea>.box { width: ${width}px; height: ${height}px; }</textarea>
+                <code-binding key="width" type="number" value="120" min="40" max="200" step="10"
+                  onchange="document.getElementById('preview-box').style.width = e + 'px'"></code-binding>
+                <code-binding key="height" type="number" value="80" min="40" max="200" step="10"
+                  onchange="document.getElementById('preview-box').style.height = e + 'px'"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <div id="preview-box" class="preview-box" style="width: 120px; height: 80px;"></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- String Type -->
+        <article class="doc-section">
+          <h3>String Type</h3>
+          <p>Click on a string value to edit it:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="html">
+  <textarea><button>${label}</button>&lt;/textarea>
+  <code-binding key="label" type="string" value="Click me!"
+    onchange="document.getElementById('preview-button').textContent = e"></code-binding>
+</interactive-code>
+
+<button id="preview-button">Click me!</button></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="html">
+                <textarea><button>${label}</button></textarea>
+                <code-binding key="label" type="string" value="Click me!"
+                  onchange="document.getElementById('preview-button').textContent = e"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <button id="preview-button" class="preview-button">Click me!</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Select Type -->
+        <article class="doc-section">
+          <h3>Select Type</h3>
+          <p>2 options = toggle, 3+ options = dropdown:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="scss">
+  <textarea>.alert { background: ${color}; }&lt;/textarea>
+  <code-binding key="color" type="select" options="crimson,forestgreen,royalblue,orange" value="crimson"
+    onchange="document.getElementById('preview-alert').style.background = e"></code-binding>
+</interactive-code>
+
+<div id="preview-alert" class="alert">Alert message</div></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="scss">
+                <textarea>.alert { background: ${color}; }</textarea>
+                <code-binding key="color" type="select" options="crimson,forestgreen,royalblue,orange" value="crimson"
+                  onchange="document.getElementById('preview-alert').style.background = e"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <div id="preview-alert" class="preview-alert" style="background: crimson;">Alert message</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Color Type -->
+        <article class="doc-section">
+          <h3>Color Type</h3>
+          <p>Click on a color to open the color picker:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="scss">
+  <textarea>.card { border-color: ${borderColor}; }&lt;/textarea>
+  <code-binding key="borderColor" type="color" value="#6750a4"
+    onchange="document.getElementById('preview-card').style.borderColor = e"></code-binding>
+</interactive-code>
+
+<div id="preview-card" class="card">Card with custom border</div></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="scss">
+                <textarea>.card { border-color: ${borderColor}; }</textarea>
+                <code-binding key="borderColor" type="color" value="#6750a4"
+                  onchange="document.getElementById('preview-card').style.borderColor = e"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <div id="preview-card" class="preview-card" style="border-color: #6750a4;">Card with custom border</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Comment Type -->
+        <article class="doc-section">
+          <h3>Comment Type (Line Toggle)</h3>
+          <p>Checkbox to comment/uncomment a line:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="scss">
+  <textarea>.element {
+  ${enableShadow}box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  ${enableRadius}border-radius: 12px;
+}&lt;/textarea>
+  <code-binding key="enableShadow" type="comment" value="true"
+    onchange="document.getElementById('preview-element').style.boxShadow = e ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'"></code-binding>
+  <code-binding key="enableRadius" type="comment" value="true"
+    onchange="document.getElementById('preview-element').style.borderRadius = e ? '12px' : '0'"></code-binding>
+</interactive-code>
+
+<div id="preview-element" class="element">Styled element</div></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="scss">
+                <textarea>.element {
+  ${enableShadow}box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  ${enableRadius}border-radius: 12px;
+}</textarea>
+                <code-binding key="enableShadow" type="comment" value="true"
+                  onchange="document.getElementById('preview-element').style.boxShadow = e ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'"></code-binding>
+                <code-binding key="enableRadius" type="comment" value="true"
+                  onchange="document.getElementById('preview-element').style.borderRadius = e ? '12px' : '0'"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <div id="preview-element" class="preview-element">Styled element</div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Documentation Section -->
+      <section class="documentation">
+        <h2>Documentation</h2>
+
+        <!-- Installation -->
+        <article class="doc-section">
+          <h3>Installation</h3>
+          <interactive-code language="shell">
+            <textarea>npm install @softwarity/interactive-code</textarea>
+          </interactive-code>
+        </article>
+
+        <!-- Usage -->
+        <article class="doc-section">
+          <h3>Usage</h3>
+          <interactive-code language="typescript">
+            <textarea>
+import '@softwarity/interactive-code';</textarea>
+          </interactive-code>
+          <interactive-code language="html">
+            <textarea>
+<interactive-code language="scss">
+  <textarea>
+:root {
+  --width: ${width}px;
+}
+  &lt;/textarea>
+  <code-binding key="width" type="number" value="72"></code-binding>
+</interactive-code></textarea>
+          </interactive-code>
+        </article>
+
+        <!-- API - InteractiveCodeElement -->
+        <article class="doc-section">
+          <h3>API - &lt;interactive-code&gt;</h3>
+          <p>Main component for displaying syntax-highlighted code with interactive bindings.</p>
+          <div class="api-table-wrapper">
+            <table class="api-table">
+              <thead>
+                <tr>
+                  <th>Attribute</th>
+                  <th>Type</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>language</code></td>
+                  <td><code>'html' | 'scss' | 'typescript' | 'shell'</code></td>
+                  <td><code>'html'</code></td>
+                  <td>Syntax highlighting language</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Properties</h4>
+          <div class="api-table-wrapper">
+            <table class="api-table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>code</code></td>
+                  <td><code>string | null</code></td>
+                  <td>Set code content programmatically</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Content</h4>
+          <p>Use <code>&lt;textarea&gt;</code> to define the code template (recommended). Alternative: <code>&lt;template&gt;</code>.</p>
+        </article>
+
+        <!-- API - CodeBindingElement -->
+        <article class="doc-section">
+          <h3>API - &lt;code-binding&gt;</h3>
+          <p>Defines an interactive binding in the code. Use <code>${key}</code> in the template.</p>
+          <div class="api-table-wrapper">
+            <table class="api-table">
+              <thead>
+                <tr>
+                  <th>Attribute</th>
+                  <th>Type</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>key</code></td>
+                  <td><code>string</code></td>
+                  <td>—</td>
+                  <td>Binding identifier (matches <code>${key}</code> in template)</td>
+                </tr>
+                <tr>
+                  <td><code>type</code></td>
+                  <td><code>BindingType</code></td>
+                  <td><code>'readonly'</code></td>
+                  <td>Type of binding (see below)</td>
+                </tr>
+                <tr>
+                  <td><code>value</code></td>
+                  <td><code>any</code></td>
+                  <td>—</td>
+                  <td>Initial value</td>
+                </tr>
+                <tr>
+                  <td><code>disabled</code></td>
+                  <td><code>boolean</code></td>
+                  <td><code>false</code></td>
+                  <td>Disable editing</td>
+                </tr>
+                <tr>
+                  <td><code>min</code></td>
+                  <td><code>number</code></td>
+                  <td>—</td>
+                  <td>Minimum value (for <code>number</code> type)</td>
+                </tr>
+                <tr>
+                  <td><code>max</code></td>
+                  <td><code>number</code></td>
+                  <td>—</td>
+                  <td>Maximum value (for <code>number</code> type)</td>
+                </tr>
+                <tr>
+                  <td><code>step</code></td>
+                  <td><code>number</code></td>
+                  <td><code>1</code></td>
+                  <td>Step increment (for <code>number</code> type)</td>
+                </tr>
+                <tr>
+                  <td><code>options</code></td>
+                  <td><code>string</code></td>
+                  <td>—</td>
+                  <td>Comma-separated options (for <code>select</code> type)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Events</h4>
+          <div class="api-table-wrapper">
+            <table class="api-table">
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Detail</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>change</code></td>
+                  <td><code>any</code></td>
+                  <td>Fired when value changes</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- Binding Types -->
+        <article class="doc-section">
+          <h3>Binding Types</h3>
+          <div class="api-table-wrapper">
+            <table class="api-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Description</th>
+                  <th>Interaction</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>boolean</code></td>
+                  <td>true/false value</td>
+                  <td>Click to toggle</td>
+                </tr>
+                <tr>
+                  <td><code>number</code></td>
+                  <td>Numeric value</td>
+                  <td>Click to edit, supports min/max/step</td>
+                </tr>
+                <tr>
+                  <td><code>string</code></td>
+                  <td>Text value</td>
+                  <td>Click to edit</td>
+                </tr>
+                <tr>
+                  <td><code>select</code></td>
+                  <td>Option from list</td>
+                  <td>Click toggle (2 options) or dropdown (3+)</td>
+                </tr>
+                <tr>
+                  <td><code>color</code></td>
+                  <td>Color value</td>
+                  <td>Click to open color picker</td>
+                </tr>
+                <tr>
+                  <td><code>comment</code></td>
+                  <td>Line toggle</td>
+                  <td>Checkbox to comment/uncomment line</td>
+                </tr>
+                <tr>
+                  <td><code>readonly</code></td>
+                  <td>Display only</td>
+                  <td>No interaction</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- Features -->
+        <article class="doc-section">
+          <h3>Features</h3>
+          <ul class="feature-list">
+            <li><strong>Syntax Highlighting</strong> - HTML, SCSS, TypeScript, Shell</li>
+            <li><strong>Interactive Bindings</strong> - Click to edit values directly in the code</li>
+            <li><strong>Multiple Types</strong> - boolean, number, string, select, color, comment</li>
+            <li><strong>Framework Agnostic</strong> - Works with Angular, React, Vue, or vanilla JS</li>
+            <li><strong>Shadow DOM</strong> - Encapsulated styles</li>
+            <li><strong>Zero Dependencies</strong> - Pure Web Components</li>
+          </ul>
+        </article>
+      </section>
+
+      <!-- Card Footer -->
+      <footer class="card-footer">
+        <img src="https://www.softwarity.io/img/softwarity.svg" alt="Softwarity" class="footer-logo">
+        <span>Made by</span>
+        <a href="https://www.softwarity.io/" target="_blank">Softwarity</a>
+      </footer>
+    </div>
+  </main>
+
+  <script type="module" src="../src/index.ts"></script>
+  <script type="module" src="https://unpkg.com/@softwarity/projects"></script>
+</body>
+</html>
