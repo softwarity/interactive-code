@@ -238,8 +238,18 @@ export class InteractiveCodeElement extends HTMLElement {
         if (key) {
           const binding = this.bindings.get(key);
           if (binding) {
+            const newValue = target.value;
+            // Update color preview and text display
+            const colorPreview = target.parentElement?.querySelector('.color-preview') as HTMLElement;
+            const colorText = target.parentElement?.querySelector('.token-string');
+            if (colorPreview) {
+              colorPreview.style.background = newValue;
+            }
+            if (colorText) {
+              colorText.textContent = newValue;
+            }
             this._internalChange = true;
-            binding.value = target.value;
+            binding.value = newValue;
             this._internalChange = false;
           }
         }
