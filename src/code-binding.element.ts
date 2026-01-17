@@ -68,7 +68,7 @@ export class CodeBindingElement extends HTMLElement {
     this._connected = true;
   }
 
-  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
+  attributeChangedCallback(name: string, _oldValue: string | null, newValue: string | null) {
     if (name === 'value' && newValue !== null) {
       const parsed = this.parseValue(newValue);
       if (this._value !== parsed) {
