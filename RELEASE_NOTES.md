@@ -2,6 +2,10 @@
 
 ## 1.0.5
 
+### Bug Fixes
+
+- Multi-line block comments now correctly gray out all lines (not just the first line)
+
 ---
 
 ## v1.0.4

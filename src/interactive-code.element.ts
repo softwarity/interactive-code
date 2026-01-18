@@ -326,7 +326,12 @@ export class InteractiveCodeElement extends HTMLElement {
       blockCommentKeys.add(match[1]);
     }
 
-    return lines.map(line => {
+    // Track which block comments are currently open (for multi-line block comments)
+    const openBlockComments = new Set<string>();
+
+    const renderedLines: string[] = [];
+
+    for (const line of lines) {
       const indentMatch = line.match(/^(\s*)/);
       const indent = indentMatch ? indentMatch[1] : '';
       let content = line.slice(indent.length);
@@ -344,16 +349,28 @@ export class InteractiveCodeElement extends HTMLElement {
         }
       }
 
+      // Check if this line is inside an active (commented) block comment
+      const isInsideActiveBlock = Array.from(openBlockComments).some(key => {
+        const binding = this.bindings.get(key);
+        return binding?.value === false; // false means commented (active)
+      });
+
       // Replace bindings with markers, then highlight, then restore
       let markerIndex = 0;
       const markers = new Map<string, string>();
+
+      // Track block comment state changes on this line
+      const blockStartsOnLine: string[] = [];
+      const blockEndsOnLine: string[] = [];
 
       // Handle bindings - capture optional ="value" for attribute type
       // Pattern matches ${key} optionally followed by ="value"
       let processedContent = content.replace(/\$\{(\w+)\}(="[^"]*")?/g, (_, key, attrValue) => {
         const binding = this.bindings.get(key);
-        if (binding?.type === 'comment') {
-          // This is a block comment start marker - make it clickable like line toggle
+        if (binding?.type === 'comment' && blockCommentKeys.has(key)) {
+          // This is a block comment start marker
+          blockStartsOnLine.push(key);
+          openBlockComments.add(key);
           const marker = `__COMMENT_START_${markerIndex++}__`;
           const isEnabled = binding.value === true;
           const toggleClass = isEnabled ? 'block-toggle-inactive' : 'block-toggle-active';
@@ -378,10 +395,11 @@ export class InteractiveCodeElement extends HTMLElement {
       processedContent = processedContent.replace(/\$\{\/(\w+)\}/g, (_, key) => {
         const binding = this.bindings.get(key);
         if (binding?.type === 'comment' && commentStyle.blockEndIndicator) {
+          blockEndsOnLine.push(key);
+          openBlockComments.delete(key);
           const marker = `__COMMENT_END_${markerIndex++}__`;
           const isEnabled = binding.value === true;
           const toggleClass = isEnabled ? 'block-toggle-inactive' : 'block-toggle-active';
-          // End indicator is not clickable, just visual
           const endHtml = `<span class="block-end ${toggleClass}">${commentStyle.blockEndIndicator}</span>`;
           markers.set(marker, (isEnabled ? '' : ' ') + endHtml);
           return marker;
@@ -397,19 +415,27 @@ export class InteractiveCodeElement extends HTMLElement {
         processedContent = processedContent.replace(marker, html);
       }
 
+      // Determine if line content should be grayed
+      // Gray if: inside active block OR block starts/ends on this line and is active
+      const hasActiveBlockStart = blockStartsOnLine.some(key => this.bindings.get(key)?.value === false);
+      const hasActiveBlockEnd = blockEndsOnLine.some(key => this.bindings.get(key)?.value === false);
+      const shouldGrayLine = isInsideActiveBlock || hasActiveBlockStart || hasActiveBlockEnd;
+
       // Build line HTML
       if (lineToggleBinding) {
         const isEnabled = lineToggleBinding.value === true;
-        // Comment indicator is clickable - grayed when not active (line visible), visible when active (line commented)
-        // isEnabled=true means line is NOT commented (comment is "off"), isEnabled=false means line IS commented (comment is "on")
         const toggleClass = isEnabled ? 'line-toggle-inactive' : 'line-toggle-active';
         const toggleHtml = `<span class="line-toggle inline-control ${toggleClass}" data-binding="${lineToggleBinding.key}" data-action="toggle">${commentStyle.lineIndicator}</span>`;
         const commentSuffix = this.language === 'html' && !isEnabled ? `<span class="token-comment">${commentStyle.blockEnd}</span>` : '';
-        return `<span class="code-line${isEnabled ? '' : ' line-disabled'}"><span class="indent">${indent}</span>${toggleHtml}${processedContent}${commentSuffix}</span>`;
+        renderedLines.push(`<span class="code-line${isEnabled ? '' : ' line-disabled'}"><span class="indent">${indent}</span>${toggleHtml}${processedContent}${commentSuffix}</span>`);
+      } else if (shouldGrayLine) {
+        renderedLines.push(`<span class="code-line line-disabled"><span class="indent">${indent}</span>${processedContent}</span>`);
+      } else {
+        renderedLines.push(`<span class="code-line"><span class="indent">${indent}</span>${processedContent}</span>`);
       }
+    }
 
-      return `<span class="code-line"><span class="indent">${indent}</span>${processedContent}</span>`;
-    }).join('');
+    return renderedLines.join('');
   }
 
   private renderBinding(binding: CodeBindingElement, attrValue?: string): string {
@@ -625,8 +651,9 @@ export class InteractiveCodeElement extends HTMLElement {
         background: transparent;
       }
 
-      .line-disabled {
-        opacity: 0.4;
+      .line-disabled,
+      .block-content-disabled {
+        opacity: 0.3;
       }
 
       /* Token colors */
