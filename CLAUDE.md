@@ -17,17 +17,18 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Release Notes Workflow
 
-**IMPORTANT**: Do NOT add new version headers (`## v1.0.x`) to RELEASE_NOTES.md manually.
+**IMPORTANT**: Do NOT add new version headers (`## v1.0.x`) to RELEASE_NOTES.md manually. The CI workflow adds them automatically.
 
-The release workflow (`.github/workflows/release.yml`) handles versioning:
-1. `npm version patch` bumps the version (e.g., 1.0.2 → 1.0.3)
-2. The script automatically inserts the NEXT version header (`## 1.0.4`) at the top as a placeholder
+**How it works**:
+1. After releasing v1.0.2, the CI adds `## v1.0.3` as a placeholder for the next release
+2. Developers add their changes UNDER the existing `## v1.0.3` section
+3. When releasing v1.0.3, the CI adds `## v1.0.4` as the new placeholder
 
-**During development**: Add changes under the existing version section at the top (the one created by the previous release workflow):
+**During development**: Add changes under the existing version placeholder (already created by CI):
 ```markdown
 # Release Notes
 
-## v1.0.3   <-- placeholder added by workflow, add your changes here
+## v1.0.3   <-- placeholder added by CI after 1.0.2 release, add your changes here
 
 ### Features
 - New feature description
@@ -40,7 +41,7 @@ The release workflow (`.github/workflows/release.yml`) handles versioning:
 ## v1.0.2   <-- previous release (do not modify)
 ```
 
-When releasing v1.0.3, the workflow will add `## v1.0.4` as the new placeholder for future changes.
+**Never remove the version placeholder** - it was added by CI after the previous release.
 
 ## Project Overview
 
