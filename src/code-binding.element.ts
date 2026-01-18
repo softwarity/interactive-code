@@ -1,4 +1,4 @@
-export type BindingType = 'boolean' | 'number' | 'string' | 'select' | 'color' | 'comment' | 'readonly';
+export type BindingType = 'boolean' | 'number' | 'string' | 'select' | 'color' | 'comment' | 'attribute' | 'readonly';
 
 /**
  * <code-binding> Web Component
@@ -89,6 +89,7 @@ export class CodeBindingElement extends HTMLElement {
     switch (this.type) {
       case 'boolean':
       case 'comment':
+      case 'attribute':
         return v === 'true' || v === true;
       case 'number':
         return typeof v === 'number' ? v : Number(v);
@@ -100,25 +101,29 @@ export class CodeBindingElement extends HTMLElement {
   }
 
   private emitChange() {
-    // Support inline onchange attribute: onchange="handler(e)" where e is the value
-    const onchangeAttr = this.getAttribute('onchange');
-    if (onchangeAttr) {
-      const fn = new Function('e', onchangeAttr);
-      fn.call(this, this._value);
-    }
-
-    // Also dispatch CustomEvent for addEventListener
-    this.dispatchEvent(new CustomEvent('change', {
+    // Create CustomEvent with value in detail
+    const event = new CustomEvent('change', {
       detail: this._value,
       bubbles: true,
       composed: true
-    }));
+    });
+
+    // Support inline onchange attribute: onchange="handler(e)" where e is the CustomEvent
+    // Use e.detail to get the value (consistent with addEventListener)
+    const onchangeAttr = this.getAttribute('onchange');
+    if (onchangeAttr) {
+      const fn = new Function('e', onchangeAttr);
+      fn.call(this, event);
+    }
+
+    // Dispatch for addEventListener
+    this.dispatchEvent(event);
   }
 
-  /** Toggle boolean/comment value or cycle through select options */
+  /** Toggle boolean/comment/attribute value or cycle through select options */
   toggle() {
     if (this._disabled) return;
-    if (this.type === 'boolean' || this.type === 'comment') {
+    if (this.type === 'boolean' || this.type === 'comment' || this.type === 'attribute') {
       this.value = !this._value;
     } else if (this.type === 'select') {
       const opts = this.options;

@@ -1,4 +1,4 @@
-export type BindingType = 'boolean' | 'number' | 'string' | 'select' | 'color' | 'comment' | 'readonly';
+export type BindingType = 'boolean' | 'number' | 'string' | 'select' | 'color' | 'comment' | 'attribute' | 'readonly';
 /**
  * <code-binding> Web Component
  *
@@ -34,7 +34,7 @@ export declare class CodeBindingElement extends HTMLElement {
     attributeChangedCallback(name: string, _oldValue: string | null, newValue: string | null): void;
     private parseValue;
     private emitChange;
-    /** Toggle boolean/comment value or cycle through select options */
+    /** Toggle boolean/comment/attribute value or cycle through select options */
     toggle(): void;
     /** Increment number value */
     increment(): void;

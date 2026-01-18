@@ -176,12 +176,20 @@ export class InteractiveCodeElement extends HTMLElement {
     // Handle select changes
     this.shadow.addEventListener('change', (e: Event) => {
       const target = e.target as HTMLSelectElement;
-      if (target.classList.contains('inline-select')) {
+      if (target.classList.contains('inline-select-input')) {
         const key = target.dataset['binding'];
         if (key) {
           const binding = this.bindings.get(key);
           if (binding) {
-            binding.value = target.value;
+            const newValue = target.value;
+            // Update the display span
+            const valueSpan = target.parentElement?.querySelector('.token-string');
+            if (valueSpan) {
+              valueSpan.textContent = newValue;
+            }
+            this._internalChange = true;
+            binding.value = newValue;
+            this._internalChange = false;
           }
         }
       }
@@ -220,7 +228,7 @@ export class InteractiveCodeElement extends HTMLElement {
             const newValue = target.value;
             const valueSpan = target.parentElement?.querySelector('.token-string');
             if (valueSpan) {
-              valueSpan.textContent = `'${newValue}'`;
+              valueSpan.textContent = newValue;
             }
             this._internalChange = true;
             binding.value = newValue;
@@ -280,6 +288,10 @@ export class InteractiveCodeElement extends HTMLElement {
         const colorInput = this.shadow.querySelector(`#color-${binding.key}`) as HTMLInputElement;
         if (colorInput) colorInput.click();
         break;
+      case 'edit-select':
+        const selectInput = this.shadow.querySelector(`#sel-${binding.key}`) as HTMLSelectElement;
+        if (selectInput) selectInput.focus();
+        break;
     }
   }
 
@@ -288,8 +300,31 @@ export class InteractiveCodeElement extends HTMLElement {
     this.codeContainer.innerHTML = html;
   }
 
+  private getCommentStyle(language: Language): { line: string; lineIndicator: string; blockStart: string; blockIndicator: string; blockEnd: string; blockEndIndicator: string } {
+    // Use HTML entities for < and > to prevent browser interpreting as real comments
+    switch (language) {
+      case 'html':
+        return { line: '&lt;!-- ', lineIndicator: '&lt;!--', blockStart: '&lt;!-- ', blockIndicator: '&lt;!--', blockEnd: ' --&gt;', blockEndIndicator: '--&gt;' };
+      case 'shell':
+        return { line: '# ', lineIndicator: '#', blockStart: '# ', blockIndicator: '#', blockEnd: '', blockEndIndicator: '' };
+      case 'typescript':
+      case 'scss':
+      default:
+        return { line: '// ', lineIndicator: '//', blockStart: '/* ', blockIndicator: '/*', blockEnd: ' */', blockEndIndicator: '*/' };
+    }
+  }
+
   private renderTemplate(): string {
     const lines = this.templateContent.split('\n');
+    const commentStyle = this.getCommentStyle(this.language);
+
+    // Find which comment bindings have a closing tag ${/key} (block comments)
+    const blockCommentKeys = new Set<string>();
+    const blockEndPattern = /\$\{\/(\w+)\}/g;
+    let match;
+    while ((match = blockEndPattern.exec(this.templateContent)) !== null) {
+      blockCommentKeys.add(match[1]);
+    }
 
     return lines.map(line => {
       const indentMatch = line.match(/^(\s*)/);
@@ -297,11 +332,13 @@ export class InteractiveCodeElement extends HTMLElement {
       let content = line.slice(indent.length);
 
       // Check if line starts with a comment binding (line toggle)
+      // Only treat as line toggle if there's no corresponding ${/key} (not a block)
       let lineToggleBinding: CodeBindingElement | undefined;
       const lineToggleMatch = content.match(/^\$\{(\w+)\}/);
       if (lineToggleMatch) {
         const binding = this.bindings.get(lineToggleMatch[1]);
-        if (binding?.type === 'comment') {
+        // Only treat as line toggle if it's a comment type AND not a block comment
+        if (binding?.type === 'comment' && !blockCommentKeys.has(lineToggleMatch[1])) {
           lineToggleBinding = binding;
           content = content.slice(lineToggleMatch[0].length);
         }
@@ -311,15 +348,45 @@ export class InteractiveCodeElement extends HTMLElement {
       let markerIndex = 0;
       const markers = new Map<string, string>();
 
-      let processedContent = content.replace(/\$\{(\w+)\}/g, (_, key) => {
-        const marker = `__BINDING_${markerIndex++}__`;
+      // Handle bindings - capture optional ="value" for attribute type
+      // Pattern matches ${key} optionally followed by ="value"
+      let processedContent = content.replace(/\$\{(\w+)\}(="[^"]*")?/g, (_, key, attrValue) => {
         const binding = this.bindings.get(key);
+        if (binding?.type === 'comment') {
+          // This is a block comment start marker - make it clickable like line toggle
+          const marker = `__COMMENT_START_${markerIndex++}__`;
+          const isEnabled = binding.value === true;
+          const toggleClass = isEnabled ? 'block-toggle-inactive' : 'block-toggle-active';
+          const toggleHtml = `<span class="block-toggle inline-control ${toggleClass}" data-binding="${key}" data-action="toggle">${commentStyle.blockIndicator}</span>`;
+          if (isEnabled) {
+            markers.set(marker, toggleHtml);
+          } else {
+            markers.set(marker, toggleHtml + ' ');
+          }
+          return marker;
+        }
+        const marker = `__BINDING_${markerIndex++}__`;
         if (!binding) {
           markers.set(marker, `<span class="token-unknown">\${${key}}</span>`);
         } else {
-          markers.set(marker, this.renderBinding(binding));
+          markers.set(marker, this.renderBinding(binding, attrValue));
         }
         return marker;
+      });
+
+      // Handle block comment end markers ${/key}
+      processedContent = processedContent.replace(/\$\{\/(\w+)\}/g, (_, key) => {
+        const binding = this.bindings.get(key);
+        if (binding?.type === 'comment' && commentStyle.blockEndIndicator) {
+          const marker = `__COMMENT_END_${markerIndex++}__`;
+          const isEnabled = binding.value === true;
+          const toggleClass = isEnabled ? 'block-toggle-inactive' : 'block-toggle-active';
+          // End indicator is not clickable, just visual
+          const endHtml = `<span class="block-end ${toggleClass}">${commentStyle.blockEndIndicator}</span>`;
+          markers.set(marker, (isEnabled ? '' : ' ') + endHtml);
+          return marker;
+        }
+        return `\${/${key}}`;
       });
 
       // Apply syntax highlighting
@@ -333,16 +400,19 @@ export class InteractiveCodeElement extends HTMLElement {
       // Build line HTML
       if (lineToggleBinding) {
         const isEnabled = lineToggleBinding.value === true;
-        const toggleHtml = `<span class="line-toggle inline-control" data-binding="${lineToggleBinding.key}" data-action="toggle">${isEnabled ? '☑' : '☐'}</span>`;
-        const commentPrefix = isEnabled ? '' : '<span class="token-comment">// </span>';
-        return `<span class="code-line${isEnabled ? '' : ' line-disabled'}"><span class="indent">${indent}</span>${toggleHtml}${commentPrefix}${processedContent}</span>`;
+        // Comment indicator is clickable - grayed when not active (line visible), visible when active (line commented)
+        // isEnabled=true means line is NOT commented (comment is "off"), isEnabled=false means line IS commented (comment is "on")
+        const toggleClass = isEnabled ? 'line-toggle-inactive' : 'line-toggle-active';
+        const toggleHtml = `<span class="line-toggle inline-control ${toggleClass}" data-binding="${lineToggleBinding.key}" data-action="toggle">${commentStyle.lineIndicator}</span>`;
+        const commentSuffix = this.language === 'html' && !isEnabled ? `<span class="token-comment">${commentStyle.blockEnd}</span>` : '';
+        return `<span class="code-line${isEnabled ? '' : ' line-disabled'}"><span class="indent">${indent}</span>${toggleHtml}${processedContent}${commentSuffix}</span>`;
       }
 
       return `<span class="code-line"><span class="indent">${indent}</span>${processedContent}</span>`;
     }).join('');
   }
 
-  private renderBinding(binding: CodeBindingElement): string {
+  private renderBinding(binding: CodeBindingElement, attrValue?: string): string {
     const value = binding.value;
     const key = binding.key;
     const disabledClass = binding.disabled ? ' disabled' : '';
@@ -362,7 +432,7 @@ export class InteractiveCodeElement extends HTMLElement {
 
       case 'string':
         return `<span class="inline-control inline-string${disabledClass}" data-binding="${key}" data-action="edit-string">` +
-          `<span class="token-string">'${value ?? ''}'</span>` +
+          `<span class="token-string">${value ?? ''}</span>` +
           `<input type="text" class="inline-string-input" id="str-${key}" data-binding="${key}" ` +
           `value="${value ?? ''}"></span>`;
 
@@ -371,19 +441,29 @@ export class InteractiveCodeElement extends HTMLElement {
         // For 2 options, render as toggle (like boolean)
         if (options.length === 2) {
           return `<span class="inline-control inline-select-toggle${disabledClass}" data-binding="${key}" data-action="toggle">` +
-            `<span class="token-string">'${value}'</span></span>`;
+            `<span class="token-string">${value}</span></span>`;
         }
-        // For 3+ options, render as dropdown
+        // For 3+ options, render as hidden dropdown that shows on click
         const optionsHtml = options
           .map(opt => `<option value="${opt}"${opt === value ? ' selected' : ''}>${opt}</option>`)
           .join('');
-        return `<select class="inline-control inline-select${disabledClass}" data-binding="${key}">${optionsHtml}</select>`;
+        return `<span class="inline-control inline-select-wrapper${disabledClass}" data-binding="${key}" data-action="edit-select">` +
+          `<span class="token-string">${value}</span>` +
+          `<select class="inline-select-input" id="sel-${key}" data-binding="${key}">${optionsHtml}</select></span>`;
 
       case 'color':
         return `<span class="inline-control inline-color${disabledClass}" data-binding="${key}" data-action="edit-color">` +
           `<span class="color-preview" style="background:${value}"></span>` +
           `<span class="token-string">${value}</span>` +
           `<input type="color" id="color-${key}" data-binding="${key}" value="${value || '#000000'}"></span>`;
+
+      case 'attribute':
+        const isActive = value === true;
+        // If attrValue is provided (e.g., ="Mon Titre"), include it in the display
+        const attrDisplay = attrValue
+          ? `<span class="token-attr-name">${key}</span><span class="token-punctuation">=</span><span class="token-attr-value">${this.escapeHtml(attrValue.slice(1))}</span>`
+          : `<span class="token-attr-name">${key}</span>`;
+        return `<span class="inline-control inline-attribute${disabledClass}${isActive ? '' : ' attribute-disabled'}" data-binding="${key}" data-action="toggle">${attrDisplay}</span>`;
 
       case 'readonly':
         return `<span class="token-value">${value}</span>`;
@@ -545,13 +625,8 @@ export class InteractiveCodeElement extends HTMLElement {
         background: transparent;
       }
 
-      .line-toggle {
-        margin-right: 8px;
-        user-select: none;
-      }
-
       .line-disabled {
-        opacity: 0.6;
+        opacity: 0.4;
       }
 
       /* Token colors */
@@ -579,10 +654,51 @@ export class InteractiveCodeElement extends HTMLElement {
         cursor: pointer;
         border-radius: 3px;
         transition: background 0.15s ease;
+        text-decoration: underline wavy var(--code-editable-underline, #4ec9b0);
+        text-underline-offset: 3px;
       }
 
       .inline-control:hover {
         background: rgba(255, 255, 255, 0.1);
+      }
+
+      .inline-control.disabled {
+        text-decoration: none;
+        cursor: default;
+      }
+
+      .line-toggle,
+      .block-toggle {
+        margin-right: 4px;
+        padding: 0 2px;
+      }
+
+      .block-end {
+        margin-left: 4px;
+        padding: 0 2px;
+      }
+
+      .line-toggle-inactive,
+      .block-toggle-inactive,
+      .block-end.block-toggle-inactive {
+        opacity: 0.3;
+        color: var(--code-comment-color, #6a9955);
+      }
+
+      .line-toggle-active,
+      .block-toggle-active,
+      .block-end.block-toggle-active {
+        color: var(--code-editable-underline, #4ec9b0);
+      }
+
+      /* Attribute binding - strikethrough when disabled */
+      .inline-attribute {
+        padding: 0 2px;
+      }
+
+      .inline-attribute.attribute-disabled {
+        text-decoration: line-through;
+        opacity: 0.6;
       }
 
       .inline-boolean,
@@ -625,20 +741,36 @@ export class InteractiveCodeElement extends HTMLElement {
         color: #ce9178;
       }
 
-      .inline-select {
+      .inline-select-wrapper {
+        padding: 0 4px;
+        position: relative;
+        display: inline-block;
+      }
+
+      .inline-select-input {
+        position: absolute;
+        opacity: 0;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        min-width: 120px;
+        font: inherit;
         background: #2d2d2d;
         border: 1px solid #555;
         color: #ce9178;
         border-radius: 3px;
-        padding: 0 4px;
-        font: inherit;
-        font-size: 13px;
+        padding: 2px 4px;
+        pointer-events: none;
         cursor: pointer;
       }
 
-      .inline-select:focus {
+      .inline-select-wrapper:focus-within .inline-select-input,
+      .inline-select-input:focus {
+        opacity: 1;
+        pointer-events: auto;
         outline: none;
         border-color: #007acc;
+        z-index: 10;
       }
 
       .inline-color {

@@ -120,6 +120,22 @@ describe('CodeBindingElement', () => {
       document.body.removeChild(element);
     });
 
+    it('should parse attribute type as boolean', () => {
+      element.setAttribute('type', 'attribute');
+      element.setAttribute('value', 'true');
+      document.body.appendChild(element);
+      expect(element.value).toBe(true);
+      document.body.removeChild(element);
+    });
+
+    it('should parse attribute type false as boolean false', () => {
+      element.setAttribute('type', 'attribute');
+      element.setAttribute('value', 'false');
+      document.body.appendChild(element);
+      expect(element.value).toBe(false);
+      document.body.removeChild(element);
+    });
+
     it('should parse select type as string', () => {
       element.setAttribute('type', 'select');
       element.setAttribute('value', 'option1');
@@ -210,6 +226,28 @@ describe('CodeBindingElement', () => {
       element.toggle();
 
       expect(element.value).toBe(true);
+      document.body.removeChild(element);
+    });
+
+    it('should toggle attribute value from false to true', () => {
+      element.setAttribute('type', 'attribute');
+      element.setAttribute('value', 'false');
+      document.body.appendChild(element);
+
+      element.toggle();
+
+      expect(element.value).toBe(true);
+      document.body.removeChild(element);
+    });
+
+    it('should toggle attribute value from true to false', () => {
+      element.setAttribute('type', 'attribute');
+      element.setAttribute('value', 'true');
+      document.body.appendChild(element);
+
+      element.toggle();
+
+      expect(element.value).toBe(false);
       document.body.removeChild(element);
     });
 
@@ -380,19 +418,38 @@ describe('CodeBindingElement', () => {
   });
 
   describe('onchange attribute', () => {
-    it('should execute onchange handler when value changes', () => {
+    it('should execute onchange handler with CustomEvent when value changes', () => {
       element.setAttribute('type', 'number');
       element.setAttribute('value', '0');
 
       const handler = vi.fn();
       (window as any).testHandler = handler;
-      element.setAttribute('onchange', 'testHandler(e)');
+      element.setAttribute('onchange', 'testHandler(e.detail)');
 
       document.body.appendChild(element);
 
       element.value = 10;
 
       expect(handler).toHaveBeenCalledWith(10);
+
+      delete (window as any).testHandler;
+      document.body.removeChild(element);
+    });
+
+    it('should pass CustomEvent to onchange handler', () => {
+      element.setAttribute('type', 'number');
+      element.setAttribute('value', '0');
+
+      let receivedEvent: any = null;
+      (window as any).testHandler = (e: any) => { receivedEvent = e; };
+      element.setAttribute('onchange', 'testHandler(e)');
+
+      document.body.appendChild(element);
+
+      element.value = 42;
+
+      expect(receivedEvent).toBeInstanceOf(CustomEvent);
+      expect(receivedEvent.detail).toBe(42);
 
       delete (window as any).testHandler;
       document.body.removeChild(element);

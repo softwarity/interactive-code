@@ -6,7 +6,7 @@ A Web Component for displaying syntax-highlighted code with interactive bindings
 
 - **Syntax Highlighting**: HTML, SCSS, TypeScript, and Shell
 - **Interactive Bindings**: Click to edit values directly in the code
-- **Multiple Types**: boolean, number, string, select, color, comment
+- **Multiple Types**: boolean, number, string, select, color, comment, attribute
 - **Framework Agnostic**: Works with Angular, React, Vue, or vanilla JS
 - **Zero Dependencies**: Pure Web Components
 
@@ -44,7 +44,8 @@ import '@softwarity/interactive-code';
 | `string` | Text value | Click to edit |
 | `select` | Option from list | Click to toggle (2 options) or dropdown (3+) |
 | `color` | Color value | Click to open color picker |
-| `comment` | Line toggle | Checkbox to comment/uncomment line |
+| `comment` | Line/block toggle | Click indicator to comment/uncomment (`//`, `#`, `<!-- -->`, `/* */`) |
+| `attribute` | HTML attribute toggle | Click to toggle (strikethrough when disabled) |
 | `readonly` | Display only | No interaction |
 
 ## API
@@ -74,21 +75,26 @@ import '@softwarity/interactive-code';
 
 | Event | Description |
 |-------|-------------|
-| `change` | Fired when value changes |
+| `change` | Fired when value changes (CustomEvent with `detail` = new value) |
 
-**Inline handler:** Use `onchange` attribute where `e` is the new value directly:
+**Inline handler:** Use `onchange` attribute where `e` is the CustomEvent:
 
 ```html
 <code-binding key="checked" type="boolean" value="true"
-  onchange="document.getElementById('preview').checked = e"></code-binding>
+  onchange="document.getElementById('preview').checked = e.detail"></code-binding>
 ```
 
-**addEventListener:** Use `e.target.value` or `e.detail`:
+**addEventListener / Framework binding:**
 
 ```javascript
+// Vanilla JS
 binding.addEventListener('change', (e) => {
-  preview.checked = e.target.value;
+  preview.checked = e.detail;
 });
+
+// Angular: (change)="handler($event.detail)"
+// React: onChange={(e) => handler(e.detail)}
+// Vue: @change="handler($event.detail)"
 ```
 
 ## Examples
@@ -132,6 +138,8 @@ binding.addEventListener('change', (e) => {
 
 ### Comment Toggle (Line Enable/Disable)
 
+Comment style adapts to language: `//` for TypeScript/SCSS, `#` for Shell, `<!-- -->` for HTML.
+
 ```html
 <interactive-code language="scss">
   <textarea>
@@ -140,6 +148,39 @@ binding.addEventListener('change', (e) => {
 }
   </textarea>
   <code-binding key="enableWidth" type="comment" value="true"></code-binding>
+</interactive-code>
+```
+
+### Block Comment
+
+Use `${key}...${/key}` syntax for multi-line or inline block comments:
+
+```html
+<interactive-code language="typescript">
+  <textarea>
+const config = {
+  name: 'app',
+  ${debug}debug: true,
+  verbose: true,${/debug}
+};
+  </textarea>
+  <code-binding key="debug" type="comment" value="true"></code-binding>
+</interactive-code>
+```
+
+### Attribute Toggle
+
+Toggle HTML attributes on/off. Supports attributes with or without values:
+
+```html
+<interactive-code language="html">
+  <textarea>
+<button ${disabled}>Submit</button>
+<input ${placeholder}="Enter name" ${required}>
+  </textarea>
+  <code-binding key="disabled" type="attribute" value="true"></code-binding>
+  <code-binding key="placeholder" type="attribute" value="true"></code-binding>
+  <code-binding key="required" type="attribute" value="false"></code-binding>
 </interactive-code>
 ```
 

@@ -48,6 +48,7 @@ export declare class InteractiveCodeElement extends HTMLElement {
     private setupEventListeners;
     private handleAction;
     private updateCode;
+    private getCommentStyle;
     private renderTemplate;
     private renderBinding;
     private highlightSyntax;

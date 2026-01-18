@@ -371,11 +371,17 @@
       border-radius: 6px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
 
-    .preview-button:hover {
+    .preview-button:hover:not(:disabled) {
       background: #4090e0;
+    }
+
+    .preview-button:disabled {
+      background: var(--text-muted);
+      cursor: not-allowed;
+      opacity: 0.6;
     }
 
     .preview-alert {
@@ -462,7 +468,7 @@
             <textarea><interactive-code language="html">
   <textarea><label><input type="checkbox" checked="${checked}">Accept terms</label>&lt;/textarea>
   <code-binding key="checked" type="boolean" value="true"
-    onchange="document.getElementById('preview-checkbox').checked = e"></code-binding>
+    onchange="document.getElementById('preview-checkbox').checked = e.detail"></code-binding>
 </interactive-code>
 
 <label><input id="preview-checkbox" type="checkbox" checked>Accept terms</label></textarea>
@@ -474,7 +480,7 @@
               <interactive-code language="html">
                 <textarea><label><input type="checkbox" checked="${checked}">Accept terms</label></textarea>
                 <code-binding key="checked" type="boolean" value="true"
-                  onchange="document.getElementById('icon-checked').style.display = e ? 'inline' : 'none'; document.getElementById('icon-unchecked').style.display = e ? 'none' : 'inline'"></code-binding>
+                  onchange="document.getElementById('icon-checked').style.display = e.detail ? 'inline' : 'none'; document.getElementById('icon-unchecked').style.display = e.detail ? 'none' : 'inline'"></code-binding>
               </interactive-code>
               <div class="live-element">
                 <span class="checkbox-label">
@@ -497,9 +503,9 @@
             <textarea><interactive-code language="scss">
   <textarea>.box { width: ${width}px; height: ${height}px; }&lt;/textarea>
   <code-binding key="width" type="number" value="120" min="40" max="200" step="10"
-    onchange="document.getElementById('preview-box').style.width = e + 'px'"></code-binding>
+    onchange="document.getElementById('preview-box').style.width = e.detail + 'px'"></code-binding>
   <code-binding key="height" type="number" value="80" min="40" max="200" step="10"
-    onchange="document.getElementById('preview-box').style.height = e + 'px'"></code-binding>
+    onchange="document.getElementById('preview-box').style.height = e.detail + 'px'"></code-binding>
 </interactive-code>
 
 <div id="preview-box" class="box"></div></textarea>
@@ -511,9 +517,9 @@
               <interactive-code language="scss">
                 <textarea>.box { width: ${width}px; height: ${height}px; }</textarea>
                 <code-binding key="width" type="number" value="120" min="40" max="200" step="10"
-                  onchange="document.getElementById('preview-box').style.width = e + 'px'"></code-binding>
+                  onchange="document.getElementById('preview-box').style.width = e.detail + 'px'"></code-binding>
                 <code-binding key="height" type="number" value="80" min="40" max="200" step="10"
-                  onchange="document.getElementById('preview-box').style.height = e + 'px'"></code-binding>
+                  onchange="document.getElementById('preview-box').style.height = e.detail + 'px'"></code-binding>
               </interactive-code>
               <div class="live-element">
                 <div id="preview-box" class="preview-box" style="width: 120px; height: 80px;"></div>
@@ -532,7 +538,7 @@
             <textarea><interactive-code language="html">
   <textarea><button>${label}</button>&lt;/textarea>
   <code-binding key="label" type="string" value="Click me!"
-    onchange="document.getElementById('preview-button').textContent = e"></code-binding>
+    onchange="document.getElementById('preview-button').textContent = e.detail"></code-binding>
 </interactive-code>
 
 <button id="preview-button">Click me!</button></textarea>
@@ -544,7 +550,7 @@
               <interactive-code language="html">
                 <textarea><button>${label}</button></textarea>
                 <code-binding key="label" type="string" value="Click me!"
-                  onchange="document.getElementById('preview-button').textContent = e"></code-binding>
+                  onchange="document.getElementById('preview-button').textContent = e.detail"></code-binding>
               </interactive-code>
               <div class="live-element">
                 <button id="preview-button" class="preview-button">Click me!</button>
@@ -561,9 +567,9 @@
           <div class="code-header"><span>Written by developer</span></div>
           <interactive-code class="inline-code" language="html">
             <textarea><interactive-code language="scss">
-  <textarea>.alert { background: ${color}; }&lt;/textarea>
+  <textarea>.alert { background: '${color}'; }&lt;/textarea>
   <code-binding key="color" type="select" options="crimson,forestgreen,royalblue,orange" value="crimson"
-    onchange="document.getElementById('preview-alert').style.background = e"></code-binding>
+    onchange="document.getElementById('preview-alert').style.background = e.detail"></code-binding>
 </interactive-code>
 
 <div id="preview-alert" class="alert">Alert message</div></textarea>
@@ -573,9 +579,9 @@
             <div class="preview-label">Seen by user</div>
             <div class="user-view">
               <interactive-code language="scss">
-                <textarea>.alert { background: ${color}; }</textarea>
+                <textarea>.alert { background: '${color}'; }</textarea>
                 <code-binding key="color" type="select" options="crimson,forestgreen,royalblue,orange" value="crimson"
-                  onchange="document.getElementById('preview-alert').style.background = e"></code-binding>
+                  onchange="document.getElementById('preview-alert').style.background = e.detail"></code-binding>
               </interactive-code>
               <div class="live-element">
                 <div id="preview-alert" class="preview-alert" style="background: crimson;">Alert message</div>
@@ -594,7 +600,7 @@
             <textarea><interactive-code language="scss">
   <textarea>.card { border-color: ${borderColor}; }&lt;/textarea>
   <code-binding key="borderColor" type="color" value="#6750a4"
-    onchange="document.getElementById('preview-card').style.borderColor = e"></code-binding>
+    onchange="document.getElementById('preview-card').style.borderColor = e.detail"></code-binding>
 </interactive-code>
 
 <div id="preview-card" class="card">Card with custom border</div></textarea>
@@ -606,7 +612,7 @@
               <interactive-code language="scss">
                 <textarea>.card { border-color: ${borderColor}; }</textarea>
                 <code-binding key="borderColor" type="color" value="#6750a4"
-                  onchange="document.getElementById('preview-card').style.borderColor = e"></code-binding>
+                  onchange="document.getElementById('preview-card').style.borderColor = e.detail"></code-binding>
               </interactive-code>
               <div class="live-element">
                 <div id="preview-card" class="preview-card" style="border-color: #6750a4;">Card with custom border</div>
@@ -615,10 +621,45 @@
           </div>
         </article>
 
+        <!-- Attribute Type -->
+        <article class="doc-section">
+          <h3>Attribute Type</h3>
+          <p>Click on the attribute to toggle it (strikethrough when disabled). Supports attributes with or without values:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="html">
+  <textarea><input type="text" ${placeholder}="Enter name" ${disabled}>&lt;/textarea>
+  <code-binding key="placeholder" type="attribute" value="true"
+    onchange="e.detail ? document.getElementById('preview-input').setAttribute('placeholder', 'Enter name') : document.getElementById('preview-input').removeAttribute('placeholder')"></code-binding>
+  <code-binding key="disabled" type="attribute" value="false"
+    onchange="e.detail ? document.getElementById('preview-input').setAttribute('disabled', '') : document.getElementById('preview-input').removeAttribute('disabled')"></code-binding>
+</interactive-code>
+
+<input id="preview-input" type="text" placeholder="Enter name"></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="html">
+                <textarea><input type="text" ${placeholder}="Enter name" ${disabled}></textarea>
+                <code-binding key="placeholder" type="attribute" value="true"
+                  onchange="e.detail ? document.getElementById('preview-input').setAttribute('placeholder', 'Enter name') : document.getElementById('preview-input').removeAttribute('placeholder')"></code-binding>
+                <code-binding key="disabled" type="attribute" value="false"
+                  onchange="e.detail ? document.getElementById('preview-input').setAttribute('disabled', '') : document.getElementById('preview-input').removeAttribute('disabled')"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <input id="preview-input" type="text" placeholder="Enter name">
+              </div>
+            </div>
+          </div>
+        </article>
+
         <!-- Comment Type -->
         <article class="doc-section">
           <h3>Comment Type (Line Toggle)</h3>
-          <p>Checkbox to comment/uncomment a line:</p>
+          <p>Checkbox to comment/uncomment a line. Comment style adapts to language (<code>//</code> for TS/SCSS, <code>#</code> for Shell, <code>&lt;!-- --&gt;</code> for HTML):</p>
 
           <div class="code-header"><span>Written by developer</span></div>
           <interactive-code class="inline-code" language="html">
@@ -628,9 +669,9 @@
   ${enableRadius}border-radius: 12px;
 }&lt;/textarea>
   <code-binding key="enableBorder" type="comment" value="true"
-    onchange="document.getElementById('preview-element').style.border = e ? '3px solid #50fa7b' : 'none'"></code-binding>
+    onchange="document.getElementById('preview-element').style.border = e.detail ? '3px solid #50fa7b' : 'none'"></code-binding>
   <code-binding key="enableRadius" type="comment" value="true"
-    onchange="document.getElementById('preview-element').style.borderRadius = e ? '12px' : '0'"></code-binding>
+    onchange="document.getElementById('preview-element').style.borderRadius = e.detail ? '12px' : '0'"></code-binding>
 </interactive-code>
 
 <div id="preview-element" class="element">Styled element</div></textarea>
@@ -645,12 +686,101 @@
   ${enableRadius}border-radius: 12px;
 }</textarea>
                 <code-binding key="enableBorder" type="comment" value="true"
-                  onchange="document.getElementById('preview-element').style.border = e ? '3px solid #50fa7b' : 'none'"></code-binding>
+                  onchange="document.getElementById('preview-element').style.border = e.detail ? '3px solid #50fa7b' : 'none'"></code-binding>
                 <code-binding key="enableRadius" type="comment" value="true"
-                  onchange="document.getElementById('preview-element').style.borderRadius = e ? '12px' : '0'"></code-binding>
+                  onchange="document.getElementById('preview-element').style.borderRadius = e.detail ? '12px' : '0'"></code-binding>
               </interactive-code>
               <div class="live-element">
                 <div id="preview-element" class="preview-element">Styled element</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Block Comment Type -->
+        <article class="doc-section">
+          <h3>Block Comments (SCSS)</h3>
+          <p>Use <code>$&#123;key&#125;...$&#123;/key&#125;</code> syntax for block comments. Click on <code>/*</code> to toggle:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="scss">
+  <textarea>.card {
+  background: #2d2d2d;
+  ${shadow}box-shadow: 0 4px 20px rgba(80,250,123,0.3);
+  transform: translateY(-2px);${/shadow}
+  padding: 1rem;
+}&lt;/textarea>
+  <code-binding key="shadow" type="comment" value="true"
+    onchange="document.getElementById('preview-card-block').style.boxShadow = e.detail ? '0 4px 20px rgba(80,250,123,0.3)' : 'none'; document.getElementById('preview-card-block').style.transform = e.detail ? 'translateY(-2px)' : 'none'"></code-binding>
+</interactive-code>
+
+<div id="preview-card-block" class="card">Card with shadow</div></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="scss">
+                <textarea>.card {
+  background: #2d2d2d;
+  ${shadow}box-shadow: 0 4px 20px rgba(80,250,123,0.3);
+  transform: translateY(-2px);${/shadow}
+  padding: 1rem;
+}</textarea>
+                <code-binding key="shadow" type="comment" value="true"
+                  onchange="document.getElementById('preview-card-block').style.boxShadow = e.detail ? '0 4px 20px rgba(80,250,123,0.3)' : 'none'; document.getElementById('preview-card-block').style.transform = e.detail ? 'translateY(-2px)' : 'none'"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <div id="preview-card-block" class="preview-card" style="box-shadow: 0 4px 20px rgba(80,250,123,0.3); transform: translateY(-2px);">Card with shadow</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Block Comment HTML -->
+        <article class="doc-section">
+          <h3>Block Comments (HTML)</h3>
+          <p>For HTML, block comments use <code>&lt;!-- --&gt;</code>:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="html">
+  <textarea><article>
+  <h2>Title</h2>
+  ${showMeta}<p class="meta">Author: John | Date: 2024</p>
+  <p class="tags">Tags: web, components</p>${/showMeta}
+  <p>Content...</p>
+</article>&lt;/textarea>
+  <code-binding key="showMeta" type="comment" value="true"
+    onchange="document.getElementById('preview-meta').style.display = e.detail ? 'block' : 'none'"></code-binding>
+</interactive-code>
+
+<article id="preview-article">...</article></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user</div>
+            <div class="user-view">
+              <interactive-code language="html">
+                <textarea><article>
+  <h2>Title</h2>
+  ${showMeta}<p class="meta">Author: John | Date: 2024</p>
+  <p class="tags">Tags: web, components</p>${/showMeta}
+  <p>Content...</p>
+</article></textarea>
+                <code-binding key="showMeta" type="comment" value="true"
+                  onchange="document.getElementById('preview-meta').style.display = e.detail ? 'block' : 'none'"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <article style="text-align: left;">
+                  <h4 style="margin: 0 0 0.5rem 0;">Title</h4>
+                  <div id="preview-meta" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">
+                    <div>Author: John | Date: 2024</div>
+                    <div>Tags: web, components</div>
+                  </div>
+                  <p style="margin: 0;">Content...</p>
+                </article>
               </div>
             </div>
           </div>
@@ -865,6 +995,11 @@ import '@softwarity/interactive-code';</textarea>
                   <td>Click to open color picker</td>
                 </tr>
                 <tr>
+                  <td><code>attribute</code></td>
+                  <td>HTML attribute toggle</td>
+                  <td>Click to toggle (strikethrough when disabled)</td>
+                </tr>
+                <tr>
                   <td><code>comment</code></td>
                   <td>Line toggle</td>
                   <td>Checkbox to comment/uncomment line</td>
@@ -885,7 +1020,7 @@ import '@softwarity/interactive-code';</textarea>
           <ul class="feature-list">
             <li><strong>Syntax Highlighting</strong> - HTML, SCSS, TypeScript, Shell</li>
             <li><strong>Interactive Bindings</strong> - Click to edit values directly in the code</li>
-            <li><strong>Multiple Types</strong> - boolean, number, string, select, color, comment</li>
+            <li><strong>Multiple Types</strong> - boolean, number, string, select, color, attribute, comment</li>
             <li><strong>Framework Agnostic</strong> - Works with Angular, React, Vue, or vanilla JS</li>
             <li><strong>Shadow DOM</strong> - Encapsulated styles</li>
             <li><strong>Zero Dependencies</strong> - Pure Web Components</li>

@@ -233,6 +233,37 @@ describe('InteractiveCodeElement', () => {
       expect(colorPreview).not.toBeNull();
     });
 
+    it('should render attribute binding when true', async () => {
+      element.innerHTML = `
+        <textarea>\${disabled}</textarea>
+        <code-binding key="disabled" type="attribute" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const attrControl = element.shadowRoot?.querySelector('.inline-attribute');
+      expect(attrControl).not.toBeNull();
+      expect(attrControl?.classList.contains('attribute-disabled')).toBe(false);
+
+      const attrName = element.shadowRoot?.querySelector('.token-attr-name');
+      expect(attrName?.textContent).toBe('disabled');
+    });
+
+    it('should render attribute binding with strikethrough when false', async () => {
+      element.innerHTML = `
+        <textarea>\${disabled}</textarea>
+        <code-binding key="disabled" type="attribute" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const attrControl = element.shadowRoot?.querySelector('.inline-attribute');
+      expect(attrControl).not.toBeNull();
+      expect(attrControl?.classList.contains('attribute-disabled')).toBe(true);
+    });
+
     it('should render readonly binding as simple value', async () => {
       element.innerHTML = `
         <textarea>\${info}</textarea>
@@ -438,7 +469,7 @@ describe('InteractiveCodeElement', () => {
       expect(toggle).not.toBeNull();
     });
 
-    it('should show checked state when enabled', async () => {
+    it('should show inactive (grayed) indicator when line is not commented', async () => {
       element.setAttribute('language', 'scss');
       element.innerHTML = `
         <textarea>\${toggle}color: red;</textarea>
@@ -448,11 +479,12 @@ describe('InteractiveCodeElement', () => {
 
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      const toggle = element.shadowRoot?.querySelector('.line-toggle');
-      expect(toggle?.textContent).toBe('☑');
+      const toggle = element.shadowRoot?.querySelector('.line-toggle-inactive');
+      expect(toggle).not.toBeNull();
+      expect(toggle?.textContent).toContain('//');
     });
 
-    it('should show unchecked state when disabled', async () => {
+    it('should show active (visible) indicator when line is commented', async () => {
       element.setAttribute('language', 'scss');
       element.innerHTML = `
         <textarea>\${toggle}color: red;</textarea>
@@ -462,8 +494,9 @@ describe('InteractiveCodeElement', () => {
 
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      const toggle = element.shadowRoot?.querySelector('.line-toggle');
-      expect(toggle?.textContent).toBe('☐');
+      const toggle = element.shadowRoot?.querySelector('.line-toggle-active');
+      expect(toggle).not.toBeNull();
+      expect(toggle?.textContent).toContain('//');
     });
 
     it('should add comment prefix when disabled', async () => {
@@ -479,6 +512,120 @@ describe('InteractiveCodeElement', () => {
       const line = element.shadowRoot?.querySelector('.line-disabled');
       expect(line).not.toBeNull();
       expect(line?.textContent).toContain('//');
+    });
+
+    it('should use # for shell line comments', async () => {
+      element.setAttribute('language', 'shell');
+      element.innerHTML = `
+        <textarea>\${toggle}echo hello</textarea>
+        <code-binding key="toggle" type="comment" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const line = element.shadowRoot?.querySelector('.line-disabled');
+      expect(line).not.toBeNull();
+      expect(line?.textContent).toContain('#');
+      expect(line?.textContent).not.toContain('//');
+    });
+
+    it('should use <!-- --> for HTML line comments', async () => {
+      element.setAttribute('language', 'html');
+      element.innerHTML = `
+        <textarea>\${toggle}<div>content</div></textarea>
+        <code-binding key="toggle" type="comment" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const line = element.shadowRoot?.querySelector('.line-disabled');
+      expect(line).not.toBeNull();
+      expect(line?.textContent).toContain('<!--');
+      expect(line?.textContent).toContain('-->');
+    });
+
+    it('should use // for typescript line comments', async () => {
+      element.setAttribute('language', 'typescript');
+      element.innerHTML = `
+        <textarea>\${toggle}const x = 1;</textarea>
+        <code-binding key="toggle" type="comment" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const line = element.shadowRoot?.querySelector('.line-disabled');
+      expect(line).not.toBeNull();
+      expect(line?.textContent).toContain('//');
+    });
+  });
+
+  describe('block comment syntax', () => {
+    it('should render block comment delimiters when disabled', async () => {
+      element.setAttribute('language', 'typescript');
+      element.innerHTML = `
+        <textarea>\${block}const x = 1;\${/block}</textarea>
+        <code-binding key="block" type="comment" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code');
+      expect(code?.textContent).toContain('/*');
+      expect(code?.textContent).toContain('*/');
+    });
+
+    it('should show inactive block indicators when enabled (not commented)', async () => {
+      element.setAttribute('language', 'typescript');
+      element.innerHTML = `
+        <textarea>\${block}const x = 1;\${/block}</textarea>
+        <code-binding key="block" type="comment" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const toggleStart = element.shadowRoot?.querySelector('.block-toggle-inactive');
+      expect(toggleStart).not.toBeNull();
+      expect(toggleStart?.textContent).toContain('/*');
+      // */ should also be visible but grayed (inactive)
+      const toggleEnd = element.shadowRoot?.querySelector('.block-end.block-toggle-inactive');
+      expect(toggleEnd).not.toBeNull();
+      expect(toggleEnd?.textContent).toContain('*/');
+      const code = element.shadowRoot?.querySelector('code');
+      expect(code?.textContent).toContain('const x = 1;');
+    });
+
+    it('should use <!-- --> for HTML block comments', async () => {
+      element.setAttribute('language', 'html');
+      element.innerHTML = `
+        <textarea>\${block}<div>content</div>\${/block}</textarea>
+        <code-binding key="block" type="comment" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code');
+      expect(code?.textContent).toContain('<!--');
+      expect(code?.textContent).toContain('-->');
+    });
+
+    it('should use # for shell block comments (no block syntax)', async () => {
+      element.setAttribute('language', 'shell');
+      element.innerHTML = `
+        <textarea>\${block}echo hello\${/block}</textarea>
+        <code-binding key="block" type="comment" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code');
+      expect(code?.textContent).toContain('#');
     });
   });
 

@@ -15,6 +15,33 @@ This file provides guidance to Claude Code when working with this repository.
 - **Variable/function names**: In English (standard convention)
 - **Indentation**: 2 spaces (not tabs)
 
+## Release Notes Workflow
+
+**IMPORTANT**: Do NOT add new version headers (`## v1.0.x`) to RELEASE_NOTES.md manually.
+
+The release workflow (`.github/workflows/release.yml`) handles versioning:
+1. `npm version patch` bumps the version (e.g., 1.0.2 → 1.0.3)
+2. The script automatically inserts the NEXT version header (`## 1.0.4`) at the top as a placeholder
+
+**During development**: Add changes under the existing version section at the top (the one created by the previous release workflow):
+```markdown
+# Release Notes
+
+## v1.0.3   <-- placeholder added by workflow, add your changes here
+
+### Features
+- New feature description
+
+### Bug Fixes
+- Bug fix description
+
+---
+
+## v1.0.2   <-- previous release (do not modify)
+```
+
+When releasing v1.0.3, the workflow will add `## v1.0.4` as the new placeholder for future changes.
+
 ## Project Overview
 
 **@softwarity/interactive-code** is a Web Component for displaying syntax-highlighted code with interactive bindings. It allows users to click on values in code snippets to edit them directly.
@@ -23,7 +50,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 1. **Syntax Highlighting**: HTML, SCSS, TypeScript, Shell
 2. **Interactive Bindings**: Click-to-edit values in code
-3. **Multiple Binding Types**: boolean, number, string, select, color, comment
+3. **Multiple Binding Types**: boolean, number, string, select, color, comment, attribute
 4. **Framework Agnostic**: Works with any framework or vanilla JS
 5. **Shadow DOM**: Encapsulated styles
 
@@ -48,8 +75,21 @@ demo/
 | `string` | Click to edit text |
 | `select` | Toggle (2 options) or dropdown (3+) |
 | `color` | Opens native color picker |
-| `comment` | Checkbox to comment/uncomment line |
+| `comment` | Click indicator (`//`, `#`, `<!-- -->`, `/* */`) to comment/uncomment |
+| `attribute` | Toggle HTML attribute on/off (strikethrough when disabled) |
 | `readonly` | Display only |
+
+### Comment Syntax
+
+- **Line comment**: `${key}content` - click indicator to toggle line comment
+- **Block comment**: `${key}...${/key}` - click `/*` or `<!--` to toggle block around content
+- **Language-aware**: `//` for TS/SCSS, `#` for Shell, `<!-- -->` for HTML, `/* */` for blocks
+- **Visual states**: grayed when active (code visible), green when commented
+
+### Attribute Syntax
+
+- **Without value**: `${disabled}` - toggles `disabled` attribute
+- **With value**: `${title}="My Title"` - toggles entire `title="My Title"`
 
 ### Template Syntax
 
