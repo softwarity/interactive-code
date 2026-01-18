@@ -4,13 +4,7 @@
 
 ---
 
-## 1.0.4
-
-*Version skipped due to accidental double `npm version patch` execution.*
-
----
-
-## v1.0.3
+## v1.0.4
 
 ### Features
 
@@ -45,6 +39,10 @@
 ### Tests
 
 - Added 14 new tests for comment and attribute features (103 tests total)
+
+---
+
+## 1.0.3
 
 ---
 
