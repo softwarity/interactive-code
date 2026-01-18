@@ -1,6 +1,6 @@
 {
   "name": "@softwarity/interactive-code",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A Web Component for displaying syntax-highlighted code with interactive bindings. Supports HTML, SCSS, TypeScript, and Shell with editable values (boolean, number, string, select, color).",
   "type": "module",
   "main": "./dist/interactive-code.js",
