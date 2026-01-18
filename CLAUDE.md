@@ -43,6 +43,8 @@ This file provides guidance to Claude Code when working with this repository.
 
 **Never remove the version placeholder** - it was added by CI after the previous release.
 
+**NEVER run `npm version patch`** - only the CI workflow does version bumping. Running it locally will mess up the versioning.
+
 ## Project Overview
 
 **@softwarity/interactive-code** is a Web Component for displaying syntax-highlighted code with interactive bindings. It allows users to click on values in code snippets to edit them directly.

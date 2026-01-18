@@ -4,6 +4,12 @@
 
 ---
 
+## 1.0.4
+
+*Version skipped due to accidental double `npm version patch` execution.*
+
+---
+
 ## v1.0.3
 
 ### Features
