@@ -30,10 +30,16 @@ type Language = 'html' | 'scss' | 'typescript' | 'shell';
  *   <template>...</template>
  * </interactive-code>
  */
+interface ConditionalContent {
+  content: string;
+  condition: string | null; // null means always show
+}
+
 export class InteractiveCodeElement extends HTMLElement {
   private shadow: ShadowRoot;
   private codeContainer!: HTMLElement;
   private templateContent = '';
+  private conditionalContents: ConditionalContent[] = [];
   private bindings = new Map<string, CodeBindingElement>();
   private _code: string | null = null;
   private _initialized = false;
@@ -46,6 +52,11 @@ export class InteractiveCodeElement extends HTMLElement {
 
   get language(): Language {
     return (this.getAttribute('language') as Language) || 'html';
+  }
+
+  /** Whether to show separators between concatenated textarea sections */
+  get showSeparators(): boolean {
+    return this.hasAttribute('show-separators');
   }
 
   /** Code content (alternative to <textarea> child) */
@@ -114,15 +125,24 @@ export class InteractiveCodeElement extends HTMLElement {
     // Don't override if code property was set
     if (this._code !== null) return;
 
-    // Try <textarea> first (content preserved as raw text)
-    const textarea = this.querySelector('textarea');
-    if (textarea) {
-      // Hide the textarea
-      textarea.style.display = 'none';
-      this.templateContent = textarea.value
-        .replace(/^\n/, '')  // Remove leading newline
-        .replace(/\n\s*$/, '') // Remove trailing whitespace
-        || '';
+    // Try <textarea> elements (content preserved as raw text)
+    const textareas = this.querySelectorAll('textarea');
+    if (textareas.length > 0) {
+      this.conditionalContents = [];
+
+      textareas.forEach(textarea => {
+        // Hide the textarea
+        textarea.style.display = 'none';
+        const content = textarea.value
+          .replace(/^\n/, '')  // Remove leading newline
+          .replace(/\n\s*$/, '') // Remove trailing whitespace
+          || '';
+        const condition = textarea.getAttribute('condition');
+        this.conditionalContents.push({ content, condition });
+      });
+
+      // For backwards compatibility, also set templateContent from first unconditional or all
+      this.updateTemplateContent();
       return;
     }
 
@@ -132,7 +152,51 @@ export class InteractiveCodeElement extends HTMLElement {
       this.templateContent = template.innerHTML
         .replace(/^\n/, '')
         .replace(/\n\s*$/, '');
+      this.conditionalContents = [{ content: this.templateContent, condition: null }];
     }
+  }
+
+  private updateTemplateContent() {
+    // Evaluate conditions and concatenate matching content
+    const parts: string[] = [];
+
+    for (const { content, condition } of this.conditionalContents) {
+      if (this.evaluateCondition(condition)) {
+        parts.push(content);
+      }
+    }
+
+    // Join with separator marker if show-separators is enabled and multiple parts
+    if (this.showSeparators && parts.length > 1) {
+      this.templateContent = parts.join('\n__SECTION_SEPARATOR__\n');
+    } else {
+      this.templateContent = parts.join('\n');
+    }
+  }
+
+  private evaluateCondition(condition: string | null): boolean {
+    // No condition means always show
+    if (condition === null || condition === '') return true;
+
+    // Handle negation: "!key"
+    const isNegated = condition.startsWith('!');
+    const key = isNegated ? condition.slice(1).trim() : condition.trim();
+
+    // Get the binding value
+    const binding = this.bindings.get(key);
+    if (!binding) {
+      // If binding doesn't exist yet, treat as falsy
+      // This handles the case where condition references a binding that hasn't been collected yet
+      return isNegated;
+    }
+
+    const value = binding.value;
+
+    // Evaluate truthiness
+    // For select type, 'undefined' string is falsy
+    const isTruthy = value !== undefined && value !== null && value !== false && value !== 'undefined';
+
+    return isNegated ? !isTruthy : isTruthy;
   }
 
   private collectBindings() {
@@ -296,6 +360,10 @@ export class InteractiveCodeElement extends HTMLElement {
   }
 
   private updateCode() {
+    // Re-evaluate conditional content before rendering
+    if (this.conditionalContents.length > 0) {
+      this.updateTemplateContent();
+    }
     const html = this.renderTemplate();
     this.codeContainer.innerHTML = html;
   }
@@ -332,6 +400,11 @@ export class InteractiveCodeElement extends HTMLElement {
     const renderedLines: string[] = [];
 
     for (const line of lines) {
+      // Handle section separator
+      if (line === '__SECTION_SEPARATOR__') {
+        renderedLines.push('<span class="section-separator"></span>');
+        continue;
+      }
       const indentMatch = line.match(/^(\s*)/);
       const indent = indentMatch ? indentMatch[1] : '';
       let content = line.slice(indent.length);
@@ -531,9 +604,9 @@ export class InteractiveCodeElement extends HTMLElement {
       /(key)(=)(&quot;)(.*?)(&quot;)/g,
       '<span class="token-attr-name">$1</span><span class="token-punctuation">$2</span><span class="token-attr-value">$3</span><span class="token-binding-key">$4</span><span class="token-attr-value">$5</span>'
     );
-    // Highlight other attributes
+    // Highlight other attributes (spans use real " not &quot; so no conflict)
     result = result.replace(
-      /(\[[\w.-]+\]|\([\w.-]+\)|[\w-]+)(=)(&quot;[^"]*&quot;)(?![^<]*<\/span>)/g,
+      /(\[[\w.-]+\]|\([\w.-]+\)|[\w-]+)(=)(&quot;.*?&quot;)/g,
       '<span class="token-attr-name">$1</span><span class="token-punctuation">$2</span><span class="token-attr-value">$3</span>'
     );
     return result;
@@ -636,6 +709,13 @@ export class InteractiveCodeElement extends HTMLElement {
       .code-line {
         display: block;
         min-height: 1.5em;
+      }
+
+      .section-separator {
+        display: block;
+        height: 1px;
+        background: var(--code-separator-color, rgba(255, 255, 255, 0.1));
+        margin: 8px 0;
       }
 
       .indent {

@@ -785,6 +785,38 @@
             </div>
           </div>
         </article>
+
+        <!-- Conditional Textareas -->
+        <article class="doc-section">
+          <h3>Conditional Textareas</h3>
+          <p>Show different code sections based on binding values. Use <code>condition</code> attribute on <code>&lt;textarea&gt;</code> elements. Add <code>show-separators</code> to display visual separators between sections:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html">
+            <textarea><interactive-code language="typescript" show-separators>
+  <textarea>const result = provider.complete(input, { groupBy: ${groupBy} });&lt;/textarea>
+  <textarea condition="!groupBy">// Use result.items for flat list
+console.log(result.items);&lt;/textarea>
+  <textarea condition="groupBy">// Use result.groups for grouped display
+console.log(result.groups);&lt;/textarea>
+  <code-binding key="groupBy" type="select" options="undefined,'continent'" value="undefined"></code-binding>
+</interactive-code></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user (click on <code>undefined</code> to toggle)</div>
+            <div class="user-view">
+              <interactive-code language="typescript" show-separators>
+                <textarea>const result = provider.complete(input, { groupBy: ${groupBy} });</textarea>
+                <textarea condition="!groupBy">// Use result.items for flat list
+console.log(result.items);</textarea>
+                <textarea condition="groupBy">// Use result.groups for grouped display
+console.log(result.groups);</textarea>
+                <code-binding key="groupBy" type="select" options="undefined,'continent'" value="undefined"></code-binding>
+              </interactive-code>
+            </div>
+          </div>
+        </article>
       </section>
 
       <!-- Documentation Section -->
@@ -840,6 +872,12 @@ import '@softwarity/interactive-code';</textarea>
                   <td><code>'html'</code></td>
                   <td>Syntax highlighting language</td>
                 </tr>
+                <tr>
+                  <td><code>show-separators</code></td>
+                  <td><code>boolean</code></td>
+                  <td><code>false</code></td>
+                  <td>Show visual separators between concatenated textarea sections</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -866,6 +904,11 @@ import '@softwarity/interactive-code';</textarea>
 
           <h4>Content</h4>
           <p>Use <code>&lt;textarea&gt;</code> to define the code template (recommended). Alternative: <code>&lt;template&gt;</code>.</p>
+          <p>Multiple <code>&lt;textarea&gt;</code> elements are concatenated. Use <code>condition</code> attribute for conditional display:</p>
+          <ul class="feature-list">
+            <li><code>condition="key"</code> - Show when binding value is truthy</li>
+            <li><code>condition="!key"</code> - Show when binding value is falsy</li>
+          </ul>
         </article>
 
         <!-- API - CodeBindingElement -->

@@ -55,6 +55,7 @@ import '@softwarity/interactive-code';
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `language` | `'html' \| 'scss' \| 'typescript' \| 'shell'` | Syntax highlighting language |
+| `show-separators` | `boolean` | Show visual separators between textarea sections |
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -184,6 +185,25 @@ Toggle HTML attributes on/off. Supports attributes with or without values:
 </interactive-code>
 ```
 
+### Conditional Textareas
+
+Show different code sections based on binding values. Multiple `<textarea>` elements are concatenated, and the `condition` attribute controls visibility:
+
+```html
+<interactive-code language="typescript" show-separators>
+  <textarea>const result = provider.complete(input, { groupBy: ${groupBy} });</textarea>
+  <textarea condition="!groupBy">// Use result.items for flat list
+console.log(result.items);</textarea>
+  <textarea condition="groupBy">// Use result.groups for grouped display
+console.log(result.groups);</textarea>
+  <code-binding key="groupBy" type="select" options="undefined,'continent'" value="undefined"></code-binding>
+</interactive-code>
+```
+
+- `condition="key"` - Show when binding value is truthy
+- `condition="!key"` - Show when binding value is falsy
+- `show-separators` - Add visual separators between sections (customizable via `--code-separator-color`)
+
 ## CSS Customization
 
 The component supports CSS custom properties for styling:
@@ -192,11 +212,14 @@ The component supports CSS custom properties for styling:
 |----------|---------|-------------|
 | `--code-bg` | `#1e1e1e` | Background color of the code block |
 | `--code-border-radius` | `8px` | Border radius of the code block |
+| `--code-separator-color` | `rgba(255, 255, 255, 0.1)` | Color of separators between textarea sections |
+| `--code-editable-underline` | `#4ec9b0` | Color of wavy underline on editable values |
 
 ```css
 interactive-code {
   --code-bg: #282c34;
   --code-border-radius: 4px;
+  --code-separator-color: rgba(100, 100, 100, 0.5);
 }
 ```
 

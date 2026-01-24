@@ -2,6 +2,30 @@
 
 ## 1.0.6
 
+### Features
+
+- **Conditional textareas**: Multiple `<textarea>` elements can now have a `condition` attribute to conditionally show/hide code sections based on binding values
+  - `condition="key"` → show when binding is truthy
+  - `condition="!key"` → show when binding is falsy
+  - Useful for showing different code patterns based on user selection
+- **Section separators**: Optional `show-separators` attribute on `<interactive-code>` adds subtle visual separators between concatenated textarea sections
+  - Customizable via `--code-separator-color` CSS variable
+
+### Example
+
+```html
+<interactive-code language="typescript" show-separators>
+  <textarea>const result = provider.complete(input, { groupBy: ${groupBy} });</textarea>
+  <textarea condition="!groupBy">// Use result.items for flat list</textarea>
+  <textarea condition="groupBy">// Use result.groups for grouped display</textarea>
+  <code-binding key="groupBy" type="select" options="undefined,'continent'" value="undefined"></code-binding>
+</interactive-code>
+```
+
+### Tests
+
+- Added 7 new tests for conditional textareas and separators (110 tests total)
+
 ---
 
 ## 1.0.5

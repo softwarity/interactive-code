@@ -718,4 +718,129 @@ describe('InteractiveCodeElement', () => {
       expect(input?.step).toBe('5');
     });
   });
+
+  describe('conditional textareas', () => {
+    it('should show only unconditional textarea when no conditions match', async () => {
+      element.innerHTML = `
+        <textarea>always shown</textarea>
+        <textarea condition="showExtra">extra content</textarea>
+        <code-binding key="showExtra" type="boolean" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('always shown');
+      expect(code).not.toContain('extra content');
+    });
+
+    it('should show conditional textarea when condition is true', async () => {
+      element.innerHTML = `
+        <textarea>always shown</textarea>
+        <textarea condition="showExtra">extra content</textarea>
+        <code-binding key="showExtra" type="boolean" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('always shown');
+      expect(code).toContain('extra content');
+    });
+
+    it('should show negated conditional textarea when value is falsy', async () => {
+      element.innerHTML = `
+        <textarea condition="!grouped">flat list</textarea>
+        <textarea condition="grouped">grouped list</textarea>
+        <code-binding key="grouped" type="boolean" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('flat list');
+      expect(code).not.toContain('grouped list');
+    });
+
+    it('should update displayed content when binding value changes', async () => {
+      element.innerHTML = `
+        <textarea condition="!grouped">flat list</textarea>
+        <textarea condition="grouped">grouped list</textarea>
+        <code-binding key="grouped" type="boolean" value="false"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      let code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('flat list');
+      expect(code).not.toContain('grouped list');
+
+      // Toggle the binding
+      const binding = element.querySelector('code-binding') as any;
+      binding.value = true;
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).not.toContain('flat list');
+      expect(code).toContain('grouped list');
+    });
+
+    it('should work with select type binding', async () => {
+      element.innerHTML = `
+        <textarea>const result = provider.complete(input, { groupBy: \${groupBy} });</textarea>
+        <textarea condition="!groupBy">// Use result.items</textarea>
+        <textarea condition="groupBy">// Use result.groups</textarea>
+        <code-binding key="groupBy" type="select" options="undefined,'continent'" value="undefined"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      let code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('result.items');
+      expect(code).not.toContain('result.groups');
+
+      // Change to continent
+      const binding = element.querySelector('code-binding') as any;
+      binding.value = "'continent'";
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).not.toContain('result.items');
+      expect(code).toContain('result.groups');
+    });
+
+    it('should show separators between sections when show-separators attribute is set', async () => {
+      element.setAttribute('show-separators', '');
+      element.innerHTML = `
+        <textarea>section 1</textarea>
+        <textarea>section 2</textarea>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const separator = element.shadowRoot?.querySelector('.section-separator');
+      expect(separator).toBeTruthy();
+    });
+
+    it('should not show separators when show-separators attribute is not set', async () => {
+      element.innerHTML = `
+        <textarea>section 1</textarea>
+        <textarea>section 2</textarea>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const separator = element.shadowRoot?.querySelector('.section-separator');
+      expect(separator).toBeFalsy();
+    });
+  });
 });
