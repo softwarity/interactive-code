@@ -7,20 +7,35 @@ A Web Component for displaying syntax-highlighted code with interactive bindings
 - **Syntax Highlighting**: HTML, SCSS, TypeScript, and Shell
 - **Interactive Bindings**: Click to edit values directly in the code
 - **Multiple Types**: boolean, number, string, select, color, comment, attribute
+- **Theme System**: Built-in IntelliJ default + 4 external CSS themes (vscode, github, solarized, catppuccin) with light/dark variants
+- **Mixed Content Highlighting**: HTML with embedded `<style>` (SCSS) and `<script>` (TypeScript) blocks
+- **Copy to Clipboard**: Optional copy button with visual feedback
+- **Line Numbers**: Optional gutter line numbers
+- **Accessibility**: ARIA attributes, keyboard navigation (Enter/Space, ArrowUp/Down)
 - **Framework Agnostic**: Works with Angular, React, Vue, or vanilla JS
 - **Zero Dependencies**: Pure Web Components
 
 ## Installation
 
+### npm
+
 ```bash
 npm install @softwarity/interactive-code
 ```
 
-## Usage
-
 ```typescript
 import '@softwarity/interactive-code';
 ```
+
+### CDN
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@softwarity/interactive-code"></script>
+```
+
+No build step required — the custom elements `<interactive-code>` and `<code-binding>` are registered automatically.
+
+## Usage
 
 ```html
 <interactive-code language="scss">
@@ -42,7 +57,7 @@ import '@softwarity/interactive-code';
 | `boolean` | true/false value | Click to toggle |
 | `number` | Numeric value | Click to edit, supports min/max/step |
 | `string` | Text value | Click to edit |
-| `select` | Option from list | Click to toggle (2 options) or dropdown (3+) |
+| `select` | Option from list | Click to toggle (2 options), dropdown (3+), or carousel (`carousel` attribute) |
 | `color` | Color value | Click to open color picker |
 | `comment` | Line/block toggle | Click indicator to comment/uncomment (`//`, `#`, `<!-- -->`, `/* */`) |
 | `attribute` | HTML attribute toggle | Click to toggle (strikethrough when disabled) |
@@ -55,7 +70,10 @@ import '@softwarity/interactive-code';
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `language` | `'html' \| 'scss' \| 'typescript' \| 'shell'` | Syntax highlighting language |
+| `color-scheme` | `'light' \| 'dark'` | Color scheme override (inherits from parent by default) |
 | `show-separators` | `boolean` | Show visual separators between textarea sections |
+| `show-copy` | `boolean` | Show copy-to-clipboard button (top-right corner) |
+| `show-line-numbers` | `boolean` | Show line numbers in the gutter |
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -73,6 +91,7 @@ import '@softwarity/interactive-code';
 | `max` | `number` | Maximum value (for `number` type) |
 | `step` | `number` | Step increment (for `number` type) |
 | `options` | `string` | Comma-separated options (for `select` type) |
+| `carousel` | `boolean` | Cycle through options on click instead of dropdown (for `select` type) |
 
 | Event | Description |
 |-------|-------------|
@@ -202,18 +221,80 @@ console.log(result.groups);</textarea>
 
 - `condition="key"` - Show when binding value is truthy
 - `condition="!key"` - Show when binding value is falsy
+- `condition="key=value"` - Show when binding value equals a specific value
+- `condition="!key=value"` - Show when binding value does NOT equal a specific value
 - `show-separators` - Add visual separators between sections (customizable via `--code-separator-color`)
+
+## Themes
+
+The built-in default is IntelliJ (Light/Darcula). Four external CSS themes are available as separate stylesheets:
+
+| Theme | File | Light | Dark |
+|-------|------|-------|------|
+| VS Code | `themes/vscode.css` | Light+ | Dark+ |
+| GitHub | `themes/github.css` | Light | Dark |
+| Solarized | `themes/solarized.css` | Light | Dark |
+| Catppuccin | `themes/catppuccin.css` | Latte | Mocha |
+
+Load a theme by adding a `<link>` stylesheet:
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@softwarity/interactive-code/themes/vscode.css">
+```
+
+Use `color-scheme` to override light/dark mode per element:
+
+```html
+<interactive-code language="typescript" color-scheme="light">
+  ...
+</interactive-code>
+```
 
 ## CSS Customization
 
-The component supports CSS custom properties for styling:
+The component exposes CSS custom properties for styling. Themes and custom overrides use these variables.
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `--code-bg` | `#1e1e1e` | Background color of the code block |
-| `--code-border-radius` | `8px` | Border radius of the code block |
-| `--code-separator-color` | `rgba(255, 255, 255, 0.1)` | Color of separators between textarea sections |
-| `--code-editable-underline` | `#4ec9b0` | Color of wavy underline on editable values |
+### UI Variables
+
+| Property | Description |
+|----------|-------------|
+| `--code-bg` | Background color |
+| `--code-text` | Foreground text color |
+| `--code-border-radius` | Border radius |
+| `--code-line-number` | Line number color |
+| `--code-separator-color` | Separator color between textarea sections |
+| `--code-focus-outline` | Focus ring color |
+| `--code-input-bg` | Inline input background |
+| `--code-input-border` | Inline input border |
+| `--code-hover-bg` | Hover background |
+| `--code-copy-color` | Copy button color |
+| `--code-copy-border` | Copy button border |
+| `--code-copy-accent` | Copy success accent |
+| `--code-color-preview-border` | Color swatch border |
+| `--code-interactive-highlight` | Interactive zone accent color |
+| `--code-interactive-color` | Interactive zone text color |
+| `--code-interactive-bg-color` | Interactive zone background |
+| `--code-interactive-border-color` | Interactive zone border color |
+| `--code-comment-color` | Comment indicator color |
+
+### Token Variables
+
+All syntax token colors: `--token-keyword`, `--token-string`, `--token-number`, `--token-comment`, `--token-tag`, `--token-attr-name`, `--token-attr-value`, `--token-punctuation`, `--token-property`, `--token-variable`, `--token-function`, `--token-decorator`, `--token-type`, `--token-class-name`, `--token-template-string`, `--token-value`, `--token-unknown`, `--token-binding-key`
+
+### Interactive Zone Styling
+
+Interactive controls expose `part="interactive"` for external CSS styling:
+
+```css
+interactive-code::part(interactive) {
+  text-decoration: underline wavy var(--code-interactive-highlight);
+}
+interactive-code::part(interactive):hover {
+  background: var(--code-interactive-bg-color);
+}
+```
+
+Built-in styles: wavy (default), dotted, dashed, highlight, outline, pill, hand-drawn, none.
 
 ```css
 interactive-code {

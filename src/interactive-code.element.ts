@@ -56,7 +56,7 @@ export class InteractiveCodeElement extends HTMLElement {
   private _initialized = false;
   private _internalChange = false;
 
-  // References for cleanup (Bug 2)
+  // References for cleanup
   private _observer: MutationObserver | null = null;
   private _fallbackTimeout: ReturnType<typeof setTimeout> | null = null;
   private _copyTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -387,7 +387,7 @@ export class InteractiveCodeElement extends HTMLElement {
           } finally {
             this._internalChange = false;
           }
-          // Bug 1: Re-evaluate conditions if this binding is used in a condition
+          // Re-evaluate conditions if this binding is used in a condition
           if (this.hasConditionDependency(key)) {
             this.updateCode();
           }
@@ -403,8 +403,10 @@ export class InteractiveCodeElement extends HTMLElement {
       e.stopPropagation();
       this._handleInlineNumberInput(target);
     } else if (target.classList.contains('inline-string-input')) {
+      e.stopPropagation();
       this._handleInlineStringInput(target);
     } else if (target.type === 'color') {
+      e.stopPropagation();
       this._handleInlineColorInput(target);
     }
   }
@@ -797,7 +799,7 @@ export class InteractiveCodeElement extends HTMLElement {
     const disabledClass = binding.disabled ? ' disabled' : '';
     const tabindex = binding.disabled ? '-1' : '0';
 
-    // Escape values for safe HTML insertion (Bug 3: XSS prevention)
+    // Escape values for safe HTML insertion (XSS prevention)
     const escValue = this.escapeHtml(String(value ?? ''));
     const escKey = this.escapeHtml(key);
 

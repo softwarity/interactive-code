@@ -10,7 +10,11 @@
 - **CSS custom properties**: All 18 token colors and 10 UI colors exposed as `--token-*` and `--code-*` variables for external customization.
 - **Interactive zone styling**: Interactive controls expose `part="interactive"` for external CSS styling (supports `:hover`). Themes provide color hooks: `--code-interactive-highlight` (accent), `--code-interactive-color` (text), `--code-interactive-bg-color` (background), `--code-interactive-border-color` (border). Shadow DOM decoration customizable via `--code-interactive-text-decoration`, `--code-interactive-border`, etc. Built-in styles: wavy (default), dotted, dashed, highlight, outline, pill, hand-drawn, none.
 - **Condition value matching**: Conditional textareas now support `condition="key=value"` syntax to show content when a binding equals a specific value (in addition to existing truthy/falsy checks).
-- **Select carousel mode**: New `carousel` boolean attribute on `<code-binding type="select">` cycles through options on click instead of opening a dropdown. Supports keyboard navigation (ArrowUp/ArrowDown).
+- **Select carousel mode**: New `carousel` boolean attribute on `<code-binding type="select">` cycles through options on click instead of opening a dropdown. Supports keyboard navigation (ArrowUp/ArrowDown) and Shift+click to cycle backward.
+- **Copy to clipboard button**: New `show-copy` attribute displays a copy button (top-right corner) with SVG clipboard/check icons and visual feedback (green check for 2 seconds after copy). Hidden by default.
+- **Line numbers**: New `show-line-numbers` attribute displays line numbers in the gutter. Numbers are excluded from copy/paste via `user-select: none`. Section separators have no line number.
+- **Hyphenated binding keys**: Binding keys now support hyphens (e.g., `${show-line-numbers}`) for use with the `attribute` binding type on HTML attributes.
+- **Accessibility**: Interactive controls now have `role`, `aria-label`, and `tabindex` attributes. Keyboard navigation supports Enter/Space for toggle actions, ArrowUp/Down for number increment/decrement. Focus-visible outline on all interactive elements.
 
 ### Bug Fixes
 
@@ -18,13 +22,6 @@
 - **Memory leak - empty `disconnectedCallback()`**: MutationObserver, setTimeout, and event listeners were never cleaned up when the element was removed from the DOM. All resources are now properly disposed in `disconnectedCallback()`.
 - **XSS risk in binding rendering**: String, number, color, and select values were inserted into HTML attributes without escaping. All dynamic values are now escaped with `escapeHtml()`.
 - **Fragile `_internalChange` flag**: If `binding.value = newValue` threw an error, the flag remained stuck at `true`. Now wrapped in `try/finally` blocks.
-
-### Features
-
-- **Copy to clipboard button**: New `show-copy` attribute displays a copy button (top-right corner) with SVG clipboard/check icons and visual feedback (green check for 2 seconds after copy). Hidden by default.
-- **Line numbers**: New `show-line-numbers` attribute displays line numbers in the gutter. Numbers are excluded from copy/paste via `user-select: none`. Section separators have no line number.
-- **Hyphenated binding keys**: Binding keys now support hyphens (e.g., `${show-line-numbers}`) for use with the `attribute` binding type on HTML attributes.
-- **Accessibility**: Interactive controls now have `role`, `aria-label`, and `tabindex` attributes. Keyboard navigation supports Enter/Space for toggle actions, ArrowUp/Down for number increment/decrement. Focus-visible outline on all interactive elements.
 
 ### Improvements
 
@@ -35,8 +32,7 @@
 
 ### Tests
 
-- Added 52 new tests: cleanup (3), XSS (3), conditional inline (1), copy button (8), line numbers (5), accessibility (6), condition value matching (5), part="interactive" (5), interactive zone CSS (4), carousel (6 rendering + 6 code-binding)
-- Updated tests: theme system (7), mixed content highlighting (7) — 177 tests total
+- 178 tests total (+68 new): cleanup (3), XSS (3), conditional inline (1), copy button (8), line numbers (5), accessibility (6), condition value matching (5), interactive zone (9), carousel (13), theme system (7), mixed content highlighting (7)
 
 ---
 
