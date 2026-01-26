@@ -2,6 +2,31 @@
 
 ## 1.0.7
 
+### Bug Fixes
+
+- **Conditional content not updated for inline controls**: When a select (3+ options), number, string, or color binding was modified via inline controls, the `_internalChange` flag prevented `updateCode()` from being called, so conditional textareas were not re-evaluated. Now checks for condition dependencies after inline changes.
+- **Memory leak - empty `disconnectedCallback()`**: MutationObserver, setTimeout, and event listeners were never cleaned up when the element was removed from the DOM. All resources are now properly disposed in `disconnectedCallback()`.
+- **XSS risk in binding rendering**: String, number, color, and select values were inserted into HTML attributes without escaping. All dynamic values are now escaped with `escapeHtml()`.
+- **Fragile `_internalChange` flag**: If `binding.value = newValue` threw an error, the flag remained stuck at `true`. Now wrapped in `try/finally` blocks.
+
+### Features
+
+- **Copy to clipboard button**: New `show-copy` attribute displays a copy button (top-right corner) with SVG clipboard/check icons and visual feedback (green check for 2 seconds after copy). Hidden by default.
+- **Line numbers**: New `show-line-numbers` attribute displays line numbers in the gutter. Numbers are excluded from copy/paste via `user-select: none`. Section separators have no line number.
+- **Hyphenated binding keys**: Binding keys now support hyphens (e.g., `${show-line-numbers}`) for use with the `attribute` binding type on HTML attributes.
+- **Accessibility**: Interactive controls now have `role`, `aria-label`, and `tabindex` attributes. Keyboard navigation supports Enter/Space for toggle actions, ArrowUp/Down for number increment/decrement. Focus-visible outline on all interactive elements.
+
+### Improvements
+
+- **Consolidated input listeners**: Three separate `input` event listeners merged into a single `_handleShadowInput()` with extracted helper methods (`_handleInlineNumberInput`, `_handleInlineStringInput`, `_handleInlineColorInput`)
+- **Refactored `renderTemplate()`**: Decomposed into smaller methods: `findBlockCommentKeys()`, `renderLine()`, `processMarkers()`, `buildLineHtml()`
+- **Named event handlers**: All anonymous event handlers converted to bound named methods for proper cleanup in `disconnectedCallback()`
+- **`CommentStyle` interface**: Extracted return type of `getCommentStyle()` into a named interface
+
+### Tests
+
+- Added 26 new tests: cleanup (3), XSS (3), conditional inline (1), copy button (8), line numbers (5), accessibility (6) — 136 tests total
+
 ---
 
 ## 1.0.6

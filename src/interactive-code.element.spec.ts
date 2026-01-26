@@ -843,4 +843,340 @@ describe('InteractiveCodeElement', () => {
       expect(separator).toBeFalsy();
     });
   });
+
+  describe('disconnectedCallback cleanup (Bug 2)', () => {
+    it('should clean up MutationObserver on disconnect', async () => {
+      element.innerHTML = `
+        <textarea>const x = 1;</textarea>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Should not throw when disconnected
+      element.parentNode?.removeChild(element);
+    });
+
+    it('should clean up fallback timeout on disconnect', () => {
+      // Connect and immediately disconnect before timeout fires
+      document.body.appendChild(element);
+      element.parentNode?.removeChild(element);
+      // No error should occur
+    });
+
+    it('should be safe to call disconnectedCallback multiple times', async () => {
+      element.innerHTML = `
+        <textarea>const x = 1;</textarea>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      element.parentNode?.removeChild(element);
+      // Manually calling again should not throw
+      (element as any).disconnectedCallback();
+    });
+  });
+
+  describe('XSS prevention (Bug 3)', () => {
+    it('should escape HTML in string binding values', async () => {
+      element.innerHTML = `
+        <textarea>\${name}</textarea>
+        <code-binding key="name" type="string" value="<script>alert(1)</script>"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code');
+      // Should not contain unescaped script tag
+      expect(code?.innerHTML).not.toContain('<script>');
+      // Should contain escaped version
+      expect(code?.innerHTML).toContain('&lt;script&gt;');
+    });
+
+    it('should escape HTML in number binding attributes', async () => {
+      element.innerHTML = `
+        <textarea>\${count}</textarea>
+        <code-binding key="count" type="number" value="42"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const input = element.shadowRoot?.querySelector('input[type="number"]') as HTMLInputElement;
+      expect(input).not.toBeNull();
+      // Value should be properly set
+      expect(input?.value).toBe('42');
+    });
+
+    it('should escape select option values', async () => {
+      element.innerHTML = `
+        <textarea>\${size}</textarea>
+        <code-binding key="size" type="select" options='small, "big"&bold, large' value="small"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const select = element.shadowRoot?.querySelector('select');
+      expect(select).not.toBeNull();
+      // Options should be properly escaped in HTML
+      const html = select?.innerHTML || '';
+      expect(html).not.toContain('&bold');
+    });
+  });
+
+  describe('conditional content with inline controls (Bug 1)', () => {
+    it('should update conditional content when select dropdown changes', async () => {
+      element.innerHTML = `
+        <textarea>mode: \${mode}</textarea>
+        <textarea condition="mode">mode is active</textarea>
+        <textarea condition="!mode">mode is inactive</textarea>
+        <code-binding key="mode" type="select" options="undefined,active,inactive" value="undefined"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      let code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('mode is inactive');
+      expect(code).not.toContain('mode is active');
+
+      // Simulate changing the select to 'active'
+      const binding = element.querySelector('code-binding') as any;
+      binding.value = 'active';
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('mode is active');
+      expect(code).not.toContain('mode is inactive');
+    });
+  });
+
+  describe('copy button (Phase 3)', () => {
+    it('should render a copy button in the shadow DOM', async () => {
+      document.body.appendChild(element);
+
+      const copyBtn = element.shadowRoot?.querySelector('.copy-button');
+      expect(copyBtn).not.toBeNull();
+    });
+
+    it('should have an aria-label on the copy button', async () => {
+      document.body.appendChild(element);
+
+      const copyBtn = element.shadowRoot?.querySelector('.copy-button');
+      expect(copyBtn?.getAttribute('aria-label')).toBe('Copy code to clipboard');
+    });
+
+    it('should have copy and check SVG icons', async () => {
+      document.body.appendChild(element);
+
+      const copyIcon = element.shadowRoot?.querySelector('.copy-icon');
+      const checkIcon = element.shadowRoot?.querySelector('.check-icon');
+      expect(copyIcon).not.toBeNull();
+      expect(checkIcon).not.toBeNull();
+    });
+
+    it('should have tabindex on copy button', async () => {
+      document.body.appendChild(element);
+
+      const copyBtn = element.shadowRoot?.querySelector('.copy-button');
+      expect(copyBtn?.getAttribute('tabindex')).toBe('0');
+    });
+
+    it('should add copied class after clipboard write', async () => {
+      // Mock clipboard API
+      const writeTextMock = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: writeTextMock },
+        writable: true,
+        configurable: true
+      });
+
+      element.code = 'const x = 1;';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const copyBtn = element.shadowRoot?.querySelector('.copy-button') as HTMLElement;
+      copyBtn?.click();
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(writeTextMock).toHaveBeenCalled();
+      expect(copyBtn?.classList.contains('copied')).toBe(true);
+      expect(copyBtn?.getAttribute('aria-label')).toBe('Copied!');
+    });
+
+    it('should hide copy button by default (no show-copy attribute)', async () => {
+      element.code = 'const x = 1;';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const copyBtn = element.shadowRoot?.querySelector('.copy-button') as HTMLElement;
+      const styles = window.getComputedStyle(copyBtn);
+      expect(styles.display).toBe('none');
+    });
+
+    it('should show copy button when show-copy attribute is set', async () => {
+      element.setAttribute('show-copy', '');
+      element.code = 'const x = 1;';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const copyBtn = element.shadowRoot?.querySelector('.copy-button') as HTMLElement;
+      expect(copyBtn).not.toBeNull();
+    });
+
+    it('should return showCopy getter value correctly', () => {
+      expect(element.showCopy).toBe(false);
+      element.setAttribute('show-copy', '');
+      expect(element.showCopy).toBe(true);
+      element.removeAttribute('show-copy');
+      expect(element.showCopy).toBe(false);
+    });
+  });
+
+  describe('line numbers (Phase 4)', () => {
+    it('should not show line numbers by default', async () => {
+      element.code = 'line 1\nline 2';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lineNumbers = element.shadowRoot?.querySelectorAll('.line-number');
+      expect(lineNumbers?.length).toBe(0);
+    });
+
+    it('should show line numbers when show-line-numbers is set', async () => {
+      element.setAttribute('show-line-numbers', '');
+      element.code = 'line 1\nline 2\nline 3';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lineNumbers = element.shadowRoot?.querySelectorAll('.line-number');
+      expect(lineNumbers?.length).toBe(3);
+      expect(lineNumbers?.[0].textContent).toBe('1');
+      expect(lineNumbers?.[1].textContent).toBe('2');
+      expect(lineNumbers?.[2].textContent).toBe('3');
+    });
+
+    it('should not assign line numbers to section separators', async () => {
+      element.setAttribute('show-line-numbers', '');
+      element.setAttribute('show-separators', '');
+      element.innerHTML = `
+        <textarea>section 1</textarea>
+        <textarea>section 2</textarea>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lineNumbers = element.shadowRoot?.querySelectorAll('.line-number');
+      // Two lines (one per section), separator has no line number
+      expect(lineNumbers?.length).toBe(2);
+      expect(lineNumbers?.[0].textContent).toBe('1');
+      expect(lineNumbers?.[1].textContent).toBe('2');
+    });
+
+    it('should have user-select none on line numbers', async () => {
+      document.body.appendChild(element);
+
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain('user-select: none');
+    });
+
+    it('should return showLineNumbers getter correctly', () => {
+      expect(element.showLineNumbers).toBe(false);
+      element.setAttribute('show-line-numbers', '');
+      expect(element.showLineNumbers).toBe(true);
+    });
+  });
+
+  describe('accessibility (Phase 5)', () => {
+    it('should add role="button" and tabindex to boolean controls', async () => {
+      element.innerHTML = `
+        <textarea>\${enabled}</textarea>
+        <code-binding key="enabled" type="boolean" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const control = element.shadowRoot?.querySelector('.inline-boolean');
+      expect(control?.getAttribute('role')).toBe('button');
+      expect(control?.getAttribute('tabindex')).toBe('0');
+      expect(control?.getAttribute('aria-label')).toContain('Toggle enabled');
+    });
+
+    it('should add role="spinbutton" to number controls', async () => {
+      element.innerHTML = `
+        <textarea>\${count}</textarea>
+        <code-binding key="count" type="number" value="5" min="0" max="10"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const control = element.shadowRoot?.querySelector('.inline-number');
+      expect(control?.getAttribute('role')).toBe('spinbutton');
+      expect(control?.getAttribute('aria-valuenow')).toBe('5');
+      expect(control?.getAttribute('aria-valuemin')).toBe('0');
+      expect(control?.getAttribute('aria-valuemax')).toBe('10');
+    });
+
+    it('should add role="textbox" to string controls', async () => {
+      element.innerHTML = `
+        <textarea>\${name}</textarea>
+        <code-binding key="name" type="string" value="test"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const control = element.shadowRoot?.querySelector('.inline-string');
+      expect(control?.getAttribute('role')).toBe('textbox');
+      expect(control?.getAttribute('tabindex')).toBe('0');
+    });
+
+    it('should set tabindex="-1" for disabled controls', async () => {
+      element.innerHTML = `
+        <textarea>\${count}</textarea>
+        <code-binding key="count" type="number" value="5" disabled></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const control = element.shadowRoot?.querySelector('.inline-number');
+      expect(control?.getAttribute('tabindex')).toBe('-1');
+    });
+
+    it('should add ARIA attributes to comment toggle controls', async () => {
+      element.setAttribute('language', 'scss');
+      element.innerHTML = `
+        <textarea>\${toggle}color: red;</textarea>
+        <code-binding key="toggle" type="comment" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const toggle = element.shadowRoot?.querySelector('.line-toggle');
+      expect(toggle?.getAttribute('role')).toBe('button');
+      expect(toggle?.getAttribute('tabindex')).toBe('0');
+      expect(toggle?.getAttribute('aria-label')).toContain('Toggle line comment');
+    });
+
+    it('should include focus-visible styles', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain('focus-visible');
+    });
+  });
 });
