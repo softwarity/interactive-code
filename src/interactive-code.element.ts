@@ -1018,7 +1018,11 @@ export class InteractiveCodeElement extends HTMLElement {
       }
 
       .line-disabled {
-        opacity: 0.3;
+        color: var(--code-comment-color, #808080);
+      }
+
+      .line-disabled [class*="token-"] {
+        color: inherit;
       }
 
       /* Token colors — IntelliJ (Light / Darcula) defaults */
