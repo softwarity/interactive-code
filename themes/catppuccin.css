@@ -1,0 +1,43 @@
+/**
+ * Catppuccin theme (Latte / Mocha) for @softwarity/interactive-code
+ * Source: https://github.com/catppuccin/catppuccin
+ *
+ * Usage:
+ *   <link rel="stylesheet" href="themes/catppuccin.css">
+ *   <!-- or via CDN -->
+ *   <link rel="stylesheet" href="https://unpkg.com/@softwarity/interactive-code/themes/catppuccin.css">
+ */
+interactive-code {
+  --code-bg: light-dark(#eff1f5, #1e1e2e);
+  --code-text: light-dark(#4c4f69, #cdd6f4);
+  --token-keyword: light-dark(#8839ef, #cba6f7);
+  --token-string: light-dark(#40a02b, #a6e3a1);
+  --token-number: light-dark(#fe640b, #fab387);
+  --token-comment: light-dark(#9ca0b0, #6c7086);
+  --token-tag: light-dark(#1e66f5, #89b4fa);
+  --token-attr-name: light-dark(#209fb5, #89dceb);
+  --token-attr-value: light-dark(#40a02b, #a6e3a1);
+  --token-punctuation: light-dark(#5c5f77, #bac2de);
+  --token-property: light-dark(#1e66f5, #89b4fa);
+  --token-variable: light-dark(#dc8a78, #f2cdcd);
+  --token-function: light-dark(#1e66f5, #89b4fa);
+  --token-decorator: light-dark(#df8e1d, #f9e2af);
+  --token-type: light-dark(#df8e1d, #f9e2af);
+  --token-class-name: light-dark(#df8e1d, #f9e2af);
+  --token-template-string: light-dark(#40a02b, #a6e3a1);
+  --token-value: light-dark(#4c4f69, #cdd6f4);
+  --token-unknown: light-dark(#df8e1d, #f9e2af);
+  --token-binding-key: light-dark(#df8e1d, #f9e2af);
+  --code-line-number: light-dark(rgba(0,0,0,0.3), rgba(255,255,255,0.25));
+  --code-separator-color: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.1));
+  --code-focus-outline: light-dark(#1e66f5, #89b4fa);
+  --code-input-bg: light-dark(#e6e9ef, #313244);
+  --code-input-border: light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.2));
+  --code-hover-bg: light-dark(rgba(0,0,0,0.05), rgba(255,255,255,0.1));
+  --code-copy-color: light-dark(rgba(0,0,0,0.4), rgba(255,255,255,0.5));
+  --code-copy-border: light-dark(rgba(0,0,0,0.15), rgba(255,255,255,0.2));
+  --code-copy-accent: light-dark(#df8e1d, #f9e2af);
+  --code-color-preview-border: light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.3));
+  --code-editable-underline: light-dark(#df8e1d, #f9e2af);
+  --code-comment-color: light-dark(#9ca0b0, #6c7086);
+}

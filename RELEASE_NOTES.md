@@ -2,6 +2,13 @@
 
 ## 1.0.7
 
+### Features
+
+- **Theme system**: Built-in IntelliJ default theme with 4 external CSS themes (vscode, github, solarized, catppuccin). Themes use CSS custom properties with `light-dark()` for automatic light/dark support. External themes are published as CSS files and available via CDN.
+- **Color scheme**: `color-scheme` attribute to override light/dark mode per element (inherits from parent by default).
+- **Mixed content highlighting**: When `language="html"`, `<style>` blocks use SCSS highlighting and `<script>` blocks use TypeScript highlighting automatically.
+- **CSS custom properties**: All 18 token colors and 10 UI colors exposed as `--token-*` and `--code-*` variables for external customization.
+
 ### Bug Fixes
 
 - **Conditional content not updated for inline controls**: When a select (3+ options), number, string, or color binding was modified via inline controls, the `_internalChange` flag prevented `updateCode()` from being called, so conditional textareas were not re-evaluated. Now checks for condition dependencies after inline changes.
@@ -25,7 +32,8 @@
 
 ### Tests
 
-- Added 26 new tests: cleanup (3), XSS (3), conditional inline (1), copy button (8), line numbers (5), accessibility (6) — 136 tests total
+- Added 26 new tests: cleanup (3), XSS (3), conditional inline (1), copy button (8), line numbers (5), accessibility (6)
+- Updated tests: theme system (7), mixed content highlighting (7) — 150 tests total
 
 ---
 

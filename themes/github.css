@@ -1,0 +1,42 @@
+/**
+ * GitHub theme (Light / Dark) for @softwarity/interactive-code
+ *
+ * Usage:
+ *   <link rel="stylesheet" href="themes/github.css">
+ *   <!-- or via CDN -->
+ *   <link rel="stylesheet" href="https://unpkg.com/@softwarity/interactive-code/themes/github.css">
+ */
+interactive-code {
+  --code-bg: light-dark(#ffffff, #0d1117);
+  --code-text: light-dark(#24292f, #c9d1d9);
+  --token-keyword: light-dark(#cf222e, #ff7b72);
+  --token-string: light-dark(#0a3069, #a5d6ff);
+  --token-number: light-dark(#0550ae, #79c0ff);
+  --token-comment: light-dark(#6e7781, #8b949e);
+  --token-tag: light-dark(#116329, #7ee787);
+  --token-attr-name: light-dark(#0550ae, #79c0ff);
+  --token-attr-value: light-dark(#0a3069, #a5d6ff);
+  --token-punctuation: light-dark(#24292f, #c9d1d9);
+  --token-property: light-dark(#0550ae, #79c0ff);
+  --token-variable: light-dark(#953800, #ffa657);
+  --token-function: light-dark(#8250df, #d2a8ff);
+  --token-decorator: light-dark(#8250df, #d2a8ff);
+  --token-type: light-dark(#116329, #7ee787);
+  --token-class-name: light-dark(#116329, #7ee787);
+  --token-template-string: light-dark(#0a3069, #a5d6ff);
+  --token-value: light-dark(#24292f, #c9d1d9);
+  --token-unknown: light-dark(#116329, #7ee787);
+  --token-binding-key: light-dark(#116329, #7ee787);
+  --code-line-number: light-dark(rgba(0,0,0,0.3), rgba(255,255,255,0.25));
+  --code-separator-color: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.1));
+  --code-focus-outline: light-dark(#0969da, #58a6ff);
+  --code-input-bg: light-dark(#f6f8fa, #161b22);
+  --code-input-border: light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.2));
+  --code-hover-bg: light-dark(rgba(0,0,0,0.05), rgba(255,255,255,0.1));
+  --code-copy-color: light-dark(rgba(0,0,0,0.4), rgba(255,255,255,0.5));
+  --code-copy-border: light-dark(rgba(0,0,0,0.15), rgba(255,255,255,0.2));
+  --code-copy-accent: light-dark(#116329, #7ee787);
+  --code-color-preview-border: light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.3));
+  --code-editable-underline: light-dark(#116329, #7ee787);
+  --code-comment-color: light-dark(#6e7781, #8b949e);
+}

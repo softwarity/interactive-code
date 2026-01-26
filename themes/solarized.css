@@ -1,0 +1,42 @@
+/**
+ * Solarized theme (Light / Dark) for @softwarity/interactive-code
+ *
+ * Usage:
+ *   <link rel="stylesheet" href="themes/solarized.css">
+ *   <!-- or via CDN -->
+ *   <link rel="stylesheet" href="https://unpkg.com/@softwarity/interactive-code/themes/solarized.css">
+ */
+interactive-code {
+  --code-bg: light-dark(#fdf6e3, #002b36);
+  --code-text: light-dark(#657b83, #839496);
+  --token-keyword: #859900;
+  --token-string: #2aa198;
+  --token-number: #d33682;
+  --token-comment: light-dark(#93a1a1, #586e75);
+  --token-tag: #268bd2;
+  --token-attr-name: #93a1a1;
+  --token-attr-value: #2aa198;
+  --token-punctuation: light-dark(#586e75, #93a1a1);
+  --token-property: #268bd2;
+  --token-variable: #b58900;
+  --token-function: #268bd2;
+  --token-decorator: #cb4b16;
+  --token-type: #b58900;
+  --token-class-name: #b58900;
+  --token-template-string: #2aa198;
+  --token-value: light-dark(#657b83, #839496);
+  --token-unknown: #b58900;
+  --token-binding-key: #b58900;
+  --code-line-number: light-dark(rgba(0,0,0,0.3), rgba(255,255,255,0.25));
+  --code-separator-color: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.1));
+  --code-focus-outline: #268bd2;
+  --code-input-bg: light-dark(#eee8d5, #073642);
+  --code-input-border: light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.2));
+  --code-hover-bg: light-dark(rgba(0,0,0,0.05), rgba(255,255,255,0.1));
+  --code-copy-color: light-dark(rgba(0,0,0,0.4), rgba(255,255,255,0.5));
+  --code-copy-border: light-dark(rgba(0,0,0,0.15), rgba(255,255,255,0.2));
+  --code-copy-accent: #b58900;
+  --code-color-preview-border: light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.3));
+  --code-editable-underline: #b58900;
+  --code-comment-color: light-dark(#93a1a1, #586e75);
+}

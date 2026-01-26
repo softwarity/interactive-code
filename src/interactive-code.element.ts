@@ -45,7 +45,7 @@ interface CommentStyle {
 }
 
 export class InteractiveCodeElement extends HTMLElement {
-  static observedAttributes = ['show-line-numbers'];
+  static observedAttributes = ['show-line-numbers', 'color-scheme'];
 
   private shadow: ShadowRoot;
   private codeContainer!: HTMLElement;
@@ -95,6 +95,11 @@ export class InteractiveCodeElement extends HTMLElement {
   /** Whether to show the copy button */
   get showCopy(): boolean {
     return this.hasAttribute('show-copy');
+  }
+
+  /** Color scheme (light or dark mode) */
+  get colorScheme(): string {
+    return this.getAttribute('color-scheme') || '';
   }
 
   /** Code content (alternative to <textarea> child) */
@@ -174,8 +179,10 @@ export class InteractiveCodeElement extends HTMLElement {
     this.shadow.removeEventListener('keydown', this._boundShadowKeydownHandler);
   }
 
-  attributeChangedCallback(_name: string, oldValue: string | null, newValue: string | null) {
+  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null) {
     if (oldValue !== newValue && this._initialized) {
+      // color-scheme is handled purely by CSS, no re-render needed
+      if (name === 'color-scheme') return;
       this.updateCode();
     }
   }
@@ -540,6 +547,22 @@ export class InteractiveCodeElement extends HTMLElement {
     return keys;
   }
 
+  private isOpeningStyleTag(line: string): boolean {
+    return /<style[\s>]/i.test(line);
+  }
+
+  private isClosingStyleTag(line: string): boolean {
+    return /<\/style>/i.test(line);
+  }
+
+  private isOpeningScriptTag(line: string): boolean {
+    return /<script[\s>]/i.test(line);
+  }
+
+  private isClosingScriptTag(line: string): boolean {
+    return /<\/script>/i.test(line);
+  }
+
   private renderTemplate(): string {
     const lines = this.templateContent.split('\n');
     const commentStyle = this.getCommentStyle(this.language);
@@ -550,13 +573,44 @@ export class InteractiveCodeElement extends HTMLElement {
     const renderedLines: string[] = [];
     let lineNumber = 1;
 
+    // Track mixed content zones for HTML language
+    let currentZone: Language = this.language;
+
     for (const line of lines) {
       // Handle section separator
       if (line === '__SECTION_SEPARATOR__') {
         renderedLines.push('<span class="section-separator"></span>');
         continue;
       }
-      renderedLines.push(this.renderLine(line, commentStyle, blockCommentKeys, openBlockComments, this.showLineNumbers ? lineNumber : 0));
+
+      let effectiveLanguage: Language = currentZone;
+
+      if (this.language === 'html') {
+        // Strip binding markers for tag detection
+        const stripped = line.replace(/\$\{[\w-]+\}/g, '').replace(/\$\{\/[\w-]+\}/g, '').trim();
+
+        // Closing tags: transition back to HTML
+        if (currentZone === 'scss' && this.isClosingStyleTag(stripped)) {
+          effectiveLanguage = 'html';
+          currentZone = 'html';
+        } else if (currentZone === 'typescript' && this.isClosingScriptTag(stripped)) {
+          effectiveLanguage = 'html';
+          currentZone = 'html';
+        }
+
+        // Opening tags: transition after this line
+        if (currentZone === 'html') {
+          if (this.isOpeningStyleTag(stripped) && !this.isClosingStyleTag(stripped)) {
+            effectiveLanguage = 'html'; // the tag line itself is HTML
+            currentZone = 'scss';
+          } else if (this.isOpeningScriptTag(stripped) && !this.isClosingScriptTag(stripped)) {
+            effectiveLanguage = 'html';
+            currentZone = 'typescript';
+          }
+        }
+      }
+
+      renderedLines.push(this.renderLine(line, commentStyle, blockCommentKeys, openBlockComments, this.showLineNumbers ? lineNumber : 0, effectiveLanguage));
       lineNumber++;
     }
 
@@ -569,7 +623,8 @@ export class InteractiveCodeElement extends HTMLElement {
     commentStyle: CommentStyle,
     blockCommentKeys: Set<string>,
     openBlockComments: Set<string>,
-    lineNumber: number
+    lineNumber: number,
+    effectiveLanguage: Language = this.language
   ): string {
     const indentMatch = line.match(/^(\s*)/);
     const indent = indentMatch ? indentMatch[1] : '';
@@ -595,7 +650,7 @@ export class InteractiveCodeElement extends HTMLElement {
     });
 
     // Process binding markers, block comments, and syntax highlighting
-    const { processedContent, blockStartsOnLine, blockEndsOnLine } = this.processMarkers(content, commentStyle, blockCommentKeys, openBlockComments);
+    const { processedContent, blockStartsOnLine, blockEndsOnLine } = this.processMarkers(content, commentStyle, blockCommentKeys, openBlockComments, effectiveLanguage);
 
     // Determine if line content should be grayed
     const hasActiveBlockStart = blockStartsOnLine.some(key => this.bindings.get(key)?.value === false);
@@ -610,7 +665,8 @@ export class InteractiveCodeElement extends HTMLElement {
     content: string,
     commentStyle: CommentStyle,
     blockCommentKeys: Set<string>,
-    openBlockComments: Set<string>
+    openBlockComments: Set<string>,
+    effectiveLanguage: Language = this.language
   ): { processedContent: string; blockStartsOnLine: string[]; blockEndsOnLine: string[] } {
     let markerIndex = 0;
     const markers = new Map<string, string>();
@@ -663,7 +719,7 @@ export class InteractiveCodeElement extends HTMLElement {
     });
 
     // Apply syntax highlighting
-    processed = this.highlightSyntax(processed, this.language);
+    processed = this.highlightSyntax(processed, effectiveLanguage);
 
     // Restore markers
     for (const [marker, html] of markers) {
@@ -918,6 +974,10 @@ export class InteractiveCodeElement extends HTMLElement {
 
   private getStyles(): string {
     return `
+      /* Color-scheme: inherit from parent by default, attribute overrides */
+      :host([color-scheme="light"]) { color-scheme: light; }
+      :host([color-scheme="dark"]) { color-scheme: dark; }
+
       :host {
         display: block;
       }
@@ -925,7 +985,8 @@ export class InteractiveCodeElement extends HTMLElement {
       .code-block {
         margin: 0;
         padding: 16px;
-        background: var(--code-bg, #1e1e1e);
+        background: var(--code-bg, light-dark(#ffffff, #2b2d30));
+        color: var(--code-text, light-dark(#000000, #a9b7c6));
         border-radius: var(--code-border-radius, 8px);
         overflow-x: auto;
         font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
@@ -946,7 +1007,7 @@ export class InteractiveCodeElement extends HTMLElement {
       .section-separator {
         display: block;
         height: 1px;
-        background: var(--code-separator-color, rgba(255, 255, 255, 0.1));
+        background: var(--code-separator-color, light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.1)));
         margin: 8px 0;
       }
 
@@ -968,41 +1029,41 @@ export class InteractiveCodeElement extends HTMLElement {
         opacity: 0.3;
       }
 
-      /* Token colors */
-      .token-keyword { color: #c586c0; }
-      .token-string { color: #ce9178; }
-      .token-number { color: #b5cea8; }
-      .token-comment { color: #6a9955; }
-      .token-tag { color: #569cd6; }
-      .token-attr-name { color: #9cdcfe; }
-      .token-attr-value { color: #ce9178; }
-      .token-punctuation { color: #d4d4d4; }
-      .token-property { color: #9cdcfe; }
-      .token-variable { color: #4fc1ff; }
-      .token-function { color: #dcdcaa; }
-      .token-decorator { color: #dcdcaa; }
-      .token-type { color: #4ec9b0; }
-      .token-class-name { color: #4ec9b0; }
-      .token-template-string { color: #ce9178; }
-      .token-value { color: #d4d4d4; }
-      .token-unknown { color: #4ec9b0; }
-      .token-binding-key { color: #4ec9b0; }
+      /* Token colors — IntelliJ (Light / Darcula) defaults */
+      .token-keyword { color: var(--token-keyword, light-dark(#000080, #cc7832)); }
+      .token-string { color: var(--token-string, light-dark(#008000, #6a8759)); }
+      .token-number { color: var(--token-number, light-dark(#0000ff, #6897bb)); }
+      .token-comment { color: var(--token-comment, #808080); }
+      .token-tag { color: var(--token-tag, light-dark(#000080, #e8bf6a)); }
+      .token-attr-name { color: var(--token-attr-name, light-dark(#0000ff, #bababa)); }
+      .token-attr-value { color: var(--token-attr-value, light-dark(#008000, #6a8759)); }
+      .token-punctuation { color: var(--token-punctuation, light-dark(#000000, #a9b7c6)); }
+      .token-property { color: var(--token-property, light-dark(#660e7a, #9876aa)); }
+      .token-variable { color: var(--token-variable, light-dark(#000000, #a9b7c6)); }
+      .token-function { color: var(--token-function, light-dark(#00627a, #ffc66d)); }
+      .token-decorator { color: var(--token-decorator, light-dark(#808000, #bbb529)); }
+      .token-type { color: var(--token-type, light-dark(#20999d, #769aa5)); }
+      .token-class-name { color: var(--token-class-name, light-dark(#20999d, #769aa5)); }
+      .token-template-string { color: var(--token-template-string, light-dark(#008000, #6a8759)); }
+      .token-value { color: var(--token-value, light-dark(#000000, #a9b7c6)); }
+      .token-unknown { color: var(--token-unknown, light-dark(#20999d, #769aa5)); }
+      .token-binding-key { color: var(--token-binding-key, light-dark(#20999d, #769aa5)); }
 
       /* Interactive controls */
       .inline-control {
         cursor: pointer;
         border-radius: 3px;
         transition: background 0.15s ease;
-        text-decoration: underline wavy var(--code-editable-underline, #4ec9b0);
+        text-decoration: underline wavy var(--code-editable-underline, light-dark(#20999d, #769aa5));
         text-underline-offset: 3px;
       }
 
       .inline-control:hover {
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--code-hover-bg, light-dark(rgba(0,0,0,0.05), rgba(255,255,255,0.1)));
       }
 
       .inline-control:focus-visible {
-        outline: 2px solid #007acc;
+        outline: 2px solid var(--code-focus-outline, light-dark(#0065a9, #214283));
         outline-offset: 1px;
       }
 
@@ -1026,13 +1087,13 @@ export class InteractiveCodeElement extends HTMLElement {
       .block-toggle-inactive,
       .block-end.block-toggle-inactive {
         opacity: 0.3;
-        color: var(--code-comment-color, #6a9955);
+        color: var(--code-comment-color, #808080);
       }
 
       .line-toggle-active,
       .block-toggle-active,
       .block-end.block-toggle-active {
-        color: var(--code-editable-underline, #4ec9b0);
+        color: var(--code-editable-underline, light-dark(#20999d, #769aa5));
       }
 
       /* Attribute binding - strikethrough when disabled */
@@ -1062,9 +1123,9 @@ export class InteractiveCodeElement extends HTMLElement {
         top: 0;
         height: 100%;
         font: inherit;
-        background: #2d2d2d;
-        border: 1px solid #555;
-        color: #b5cea8;
+        background: var(--code-input-bg, light-dark(#f2f2f2, #313335));
+        border: 1px solid var(--code-input-border, light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.2)));
+        color: var(--token-number, light-dark(#0000ff, #6897bb));
         border-radius: 3px;
         padding: 0 4px;
         pointer-events: none;
@@ -1077,12 +1138,12 @@ export class InteractiveCodeElement extends HTMLElement {
         opacity: 1;
         pointer-events: auto;
         outline: none;
-        border-color: #007acc;
+        border-color: var(--code-focus-outline, light-dark(#0065a9, #214283));
       }
 
       .inline-string-input {
         width: 120px;
-        color: #ce9178;
+        color: var(--token-string, light-dark(#008000, #6a8759));
       }
 
       .inline-select-wrapper {
@@ -1099,9 +1160,9 @@ export class InteractiveCodeElement extends HTMLElement {
         transform: translateY(-50%);
         min-width: 120px;
         font: inherit;
-        background: #2d2d2d;
-        border: 1px solid #555;
-        color: #ce9178;
+        background: var(--code-input-bg, light-dark(#f2f2f2, #313335));
+        border: 1px solid var(--code-input-border, light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.2)));
+        color: var(--token-string, light-dark(#008000, #6a8759));
         border-radius: 3px;
         padding: 2px 4px;
         pointer-events: none;
@@ -1113,7 +1174,7 @@ export class InteractiveCodeElement extends HTMLElement {
         opacity: 1;
         pointer-events: auto;
         outline: none;
-        border-color: #007acc;
+        border-color: var(--code-focus-outline, light-dark(#0065a9, #214283));
         z-index: 10;
       }
 
@@ -1137,7 +1198,7 @@ export class InteractiveCodeElement extends HTMLElement {
         width: 12px;
         height: 12px;
         border-radius: 2px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid var(--code-color-preview-border, light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.3)));
         vertical-align: middle;
       }
 
@@ -1147,9 +1208,9 @@ export class InteractiveCodeElement extends HTMLElement {
         top: 8px;
         right: 8px;
         background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid var(--code-copy-border, light-dark(rgba(0,0,0,0.15), rgba(255,255,255,0.2)));
         border-radius: 4px;
-        color: rgba(255, 255, 255, 0.5);
+        color: var(--code-copy-color, light-dark(rgba(0,0,0,0.4), rgba(255,255,255,0.5)));
         cursor: pointer;
         padding: 4px;
         display: none;
@@ -1165,13 +1226,13 @@ export class InteractiveCodeElement extends HTMLElement {
       }
 
       .copy-button:hover {
-        color: rgba(255, 255, 255, 0.8);
-        border-color: rgba(255, 255, 255, 0.4);
-        background: rgba(255, 255, 255, 0.1);
+        color: var(--code-text, light-dark(#000000, #a9b7c6));
+        border-color: var(--code-copy-color, light-dark(rgba(0,0,0,0.4), rgba(255,255,255,0.5)));
+        background: var(--code-hover-bg, light-dark(rgba(0,0,0,0.05), rgba(255,255,255,0.1)));
       }
 
       .copy-button:focus-visible {
-        outline: 2px solid #007acc;
+        outline: 2px solid var(--code-focus-outline, light-dark(#0065a9, #214283));
         outline-offset: 1px;
       }
 
@@ -1188,8 +1249,8 @@ export class InteractiveCodeElement extends HTMLElement {
       }
 
       .copy-button.copied {
-        color: #4ec9b0;
-        border-color: #4ec9b0;
+        color: var(--code-copy-accent, light-dark(#20999d, #769aa5));
+        border-color: var(--code-copy-accent, light-dark(#20999d, #769aa5));
       }
 
       /* Line numbers */
@@ -1197,7 +1258,7 @@ export class InteractiveCodeElement extends HTMLElement {
         display: inline-block;
         min-width: 2em;
         text-align: right;
-        color: rgba(255, 255, 255, 0.25);
+        color: var(--code-line-number, light-dark(rgba(0,0,0,0.3), rgba(255,255,255,0.25)));
         user-select: none;
         padding-right: 1em;
         font-variant-numeric: tabular-nums;

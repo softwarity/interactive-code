@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,8 +7,11 @@
   <link rel="icon" type="image/svg+xml" href="https://www.softwarity.io/img/softwarity.svg">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
+    /* Color scheme toggle */
+    html.dark { color-scheme: dark; }
+    html:not(.dark) { color-scheme: light; }
+
     :root {
-      color-scheme: dark;
       --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
       --bg-primary: #161b22;
       --bg-secondary: #21262d;
@@ -286,10 +289,43 @@
       color: var(--text-muted);
     }
 
+    /* Force IntelliJ dark theme on "Written by developer" code blocks */
     interactive-code.inline-code {
       margin: 0;
+      color-scheme: dark;
       --code-border-radius: 0 0 6px 6px;
-      --code-bg: #1e1e1e;
+      --code-bg: #2b2d30;
+      --code-text: #a9b7c6;
+      --token-keyword: #cc7832;
+      --token-string: #6a8759;
+      --token-number: #6897bb;
+      --token-comment: #808080;
+      --token-tag: #e8bf6a;
+      --token-attr-name: #bababa;
+      --token-attr-value: #6a8759;
+      --token-punctuation: #a9b7c6;
+      --token-property: #9876aa;
+      --token-variable: #a9b7c6;
+      --token-function: #ffc66d;
+      --token-decorator: #bbb529;
+      --token-type: #769aa5;
+      --token-class-name: #769aa5;
+      --token-template-string: #6a8759;
+      --token-value: #a9b7c6;
+      --token-unknown: #769aa5;
+      --token-binding-key: #769aa5;
+      --code-line-number: rgba(255,255,255,0.25);
+      --code-separator-color: rgba(255,255,255,0.1);
+      --code-focus-outline: #214283;
+      --code-input-bg: #313335;
+      --code-input-border: rgba(255,255,255,0.2);
+      --code-hover-bg: rgba(255,255,255,0.1);
+      --code-copy-color: rgba(255,255,255,0.5);
+      --code-copy-border: rgba(255,255,255,0.2);
+      --code-copy-accent: #769aa5;
+      --code-color-preview-border: rgba(255,255,255,0.3);
+      --code-editable-underline: #769aa5;
+      --code-comment-color: #808080;
       border: 1px solid var(--border-color);
       border-top: none;
       border-radius: 0 0 6px 6px;
@@ -452,6 +488,28 @@
         Web Component for displaying syntax-highlighted code with interactive bindings.
         Supports HTML, SCSS, TypeScript, and Shell with click-to-edit values.
       </p>
+
+      <!-- Theme & Color Scheme -->
+      <section>
+        <h2>Theme & Color Scheme</h2>
+        <p>Click on highlighted values to change theme and color scheme. Changes apply globally to all "Seen by user" code blocks below.</p>
+
+        <interactive-code class="inline-code" language="html">
+          <textarea>${useTheme}<link rel="stylesheet" href="https://unpkg.com/@softwarity/interactive-code/themes/${theme}.css"></textarea>
+          <code-binding key="useTheme" type="comment" value="true"
+            onchange="loadThemeCSS(e.detail ? this.closest('interactive-code').querySelector('[key=theme]').value : '')"></code-binding>
+          <code-binding key="theme" type="select" options="vscode,github,solarized,catppuccin" value="catppuccin"
+            onchange="var c=this.closest('interactive-code').querySelector('[key=useTheme]'); if(String(c.value)!=='false') loadThemeCSS(e.detail)"></code-binding>
+        </interactive-code>
+
+        <interactive-code class="inline-code" language="scss">
+          <textarea>html {
+  color-scheme: ${colorScheme};
+}</textarea>
+          <code-binding key="colorScheme" type="select" options="dark,light" value="dark"
+            onchange="document.documentElement.classList.toggle('dark', e.detail === 'dark'); document.querySelectorAll('.user-view interactive-code').forEach(function(el) { el.setAttribute('color-scheme', e.detail) })"></code-binding>
+        </interactive-code>
+      </section>
 
       <!-- Playground Section -->
       <section class="playground">
@@ -891,6 +949,96 @@ import '@softwarity/interactive-code';</textarea>
           </interactive-code>
         </article>
 
+        <!-- Themes -->
+        <article class="doc-section">
+          <h3>Themes</h3>
+          <p>The component uses an IntelliJ-based theme by default. To apply a different theme, load an external CSS file:</p>
+
+          <h4>Via CDN</h4>
+          <interactive-code language="html">
+            <textarea>
+<!-- Pick one -->
+<link rel="stylesheet" href="https://unpkg.com/@softwarity/interactive-code/themes/${theme}.css"></textarea>
+            <code-binding key="theme" type="select" options="vscode,github,solarized,catppuccin" value="vscode"></code-binding>
+          </interactive-code>
+
+          <h4>Via npm import</h4>
+          <interactive-code language="html">
+            <textarea>
+<link rel="stylesheet" href="node_modules/@softwarity/interactive-code/themes/${theme}.css"></textarea>
+            <code-binding key="theme" type="select" options="vscode,github,solarized,catppuccin" value="vscode"></code-binding>
+          </interactive-code>
+
+          <h4>Available themes</h4>
+          <div class="api-table-wrapper">
+            <table class="api-table">
+              <thead>
+                <tr>
+                  <th>Theme</th>
+                  <th>File</th>
+                  <th>Light variant</th>
+                  <th>Dark variant</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>IntelliJ</strong></td>
+                  <td><em>built-in (default)</em></td>
+                  <td>IntelliJ Light</td>
+                  <td>Darcula</td>
+                </tr>
+                <tr>
+                  <td>VS Code</td>
+                  <td><code>themes/vscode.css</code></td>
+                  <td>Light+</td>
+                  <td>Dark+</td>
+                </tr>
+                <tr>
+                  <td>GitHub</td>
+                  <td><code>themes/github.css</code></td>
+                  <td>GitHub Light</td>
+                  <td>GitHub Dark</td>
+                </tr>
+                <tr>
+                  <td>Solarized</td>
+                  <td><code>themes/solarized.css</code></td>
+                  <td>Solarized Light</td>
+                  <td>Solarized Dark</td>
+                </tr>
+                <tr>
+                  <td>Catppuccin</td>
+                  <td><code>themes/catppuccin.css</code></td>
+                  <td>Latte</td>
+                  <td>Mocha</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Color scheme</h4>
+          <p>The component inherits <code>color-scheme</code> from its parent (typically the page). Each theme includes both light and dark values via CSS <code>light-dark()</code>. You can override per element:</p>
+          <interactive-code language="html">
+            <textarea>
+<!-- Force light mode on a specific block -->
+<interactive-code language="scss" color-scheme="light">
+  ...
+</interactive-code></textarea>
+          </interactive-code>
+
+          <h4>Custom theme</h4>
+          <p>Create your own theme by setting CSS custom properties on <code>interactive-code</code>:</p>
+          <interactive-code language="scss">
+            <textarea>
+interactive-code {
+  --code-bg: light-dark(#fafafa, #1a1a2e);
+  --code-text: light-dark(#333, #eee);
+  --token-keyword: light-dark(#d63384, #f0a8c4);
+  --token-string: light-dark(#198754, #75d5a0);
+  /* ... see full list in theme files */
+}</textarea>
+          </interactive-code>
+        </article>
+
         <!-- API - InteractiveCodeElement -->
         <article class="doc-section">
           <h3>API - &lt;interactive-code&gt;</h3>
@@ -929,6 +1077,12 @@ import '@softwarity/interactive-code';</textarea>
                   <td><code>boolean</code></td>
                   <td><code>false</code></td>
                   <td>Show the copy-to-clipboard button</td>
+                </tr>
+                <tr>
+                  <td><code>color-scheme</code></td>
+                  <td><code>'light' | 'dark'</code></td>
+                  <td><em>inherited</em></td>
+                  <td>Override color scheme (inherits from parent by default)</td>
                 </tr>
               </tbody>
             </table>
@@ -1134,5 +1288,20 @@ import '@softwarity/interactive-code';</textarea>
 
   <script type="module" src="../src/index.ts"></script>
   <script type="module" src="https://unpkg.com/@softwarity/projects"></script>
+  <script>
+    function loadThemeCSS(theme) {
+      var existing = document.getElementById('theme-css');
+      if (existing) existing.remove();
+      if (!theme) return;
+      var link = document.createElement('link');
+      link.id = 'theme-css';
+      link.rel = 'stylesheet';
+      link.href = '../themes/' + theme + '.css';
+      document.head.appendChild(link);
+    }
+
+    // Load initial theme (catppuccin)
+    loadThemeCSS('catppuccin');
+  </script>
 </body>
 </html>

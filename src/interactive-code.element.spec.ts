@@ -1179,4 +1179,159 @@ describe('InteractiveCodeElement', () => {
       expect(style?.textContent).toContain('focus-visible');
     });
   });
+
+  describe('theme system', () => {
+    it('should use CSS variables for token colors', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain('var(--token-keyword,');
+      expect(style?.textContent).toContain('var(--token-string,');
+      expect(style?.textContent).toContain('var(--token-number,');
+    });
+
+    it('should default colorScheme to empty string (inherits)', () => {
+      expect(element.colorScheme).toBe('');
+    });
+
+    it('should return the color-scheme attribute value', () => {
+      element.setAttribute('color-scheme', 'light');
+      expect(element.colorScheme).toBe('light');
+    });
+
+    it('should not call updateCode when color-scheme changes', async () => {
+      element.code = 'const x = 1;';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const codeBefore = element.shadowRoot?.querySelector('code')?.innerHTML;
+      element.setAttribute('color-scheme', 'light');
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const codeAfter = element.shadowRoot?.querySelector('code')?.innerHTML;
+      expect(codeAfter).toBe(codeBefore);
+    });
+
+    it('should include color-scheme CSS selectors', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain(':host([color-scheme="light"])');
+      expect(style?.textContent).toContain(':host([color-scheme="dark"])');
+    });
+
+    it('should use light-dark() for built-in default values', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain('light-dark(');
+    });
+
+    it('should use var() with light-dark() fallbacks for token colors', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      // Token colors use var(--token-*, light-dark(...)) pattern
+      expect(style?.textContent).toMatch(/var\(--token-keyword,\s*light-dark\(/);
+      expect(style?.textContent).toMatch(/var\(--code-bg,\s*light-dark\(/);
+    });
+  });
+
+  describe('mixed content highlighting (HTML)', () => {
+    it('should use SCSS highlighting inside <style> blocks', async () => {
+      element.setAttribute('language', 'html');
+      element.code = '<style>\n.test { color: red; }\n</style>';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lines = element.shadowRoot?.querySelectorAll('.code-line');
+      // Line 2 should have SCSS-style property highlighting
+      const line2 = lines?.[1];
+      const property = line2?.querySelector('.token-property');
+      expect(property).not.toBeNull();
+    });
+
+    it('should use TypeScript highlighting inside <script> blocks', async () => {
+      element.setAttribute('language', 'html');
+      element.code = '<script>\nconst x = 1;\n</script>';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lines = element.shadowRoot?.querySelectorAll('.code-line');
+      // Line 2 should have TypeScript-style keyword highlighting
+      const line2 = lines?.[1];
+      const keyword = line2?.querySelector('.token-keyword');
+      expect(keyword).not.toBeNull();
+      expect(keyword?.textContent).toBe('const');
+    });
+
+    it('should keep HTML highlighting for <style> tag line itself', async () => {
+      element.setAttribute('language', 'html');
+      element.code = '<style>\n.test { color: red; }\n</style>';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lines = element.shadowRoot?.querySelectorAll('.code-line');
+      // Line 1 (<style>) should have HTML tag highlighting
+      const line1 = lines?.[0];
+      const tag = line1?.querySelector('.token-tag');
+      expect(tag).not.toBeNull();
+    });
+
+    it('should keep HTML highlighting for </style> tag line', async () => {
+      element.setAttribute('language', 'html');
+      element.code = '<style>\n.test { color: red; }\n</style>';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lines = element.shadowRoot?.querySelectorAll('.code-line');
+      // Line 3 (</style>) should have HTML tag highlighting
+      const line3 = lines?.[2];
+      const tag = line3?.querySelector('.token-tag');
+      expect(tag).not.toBeNull();
+    });
+
+    it('should handle multiple <style> blocks', async () => {
+      element.setAttribute('language', 'html');
+      element.code = '<style>\n.a { color: red; }\n</style>\n<div>text</div>\n<style>\n.b { color: blue; }\n</style>';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lines = element.shadowRoot?.querySelectorAll('.code-line');
+      // Line 2 (.a { color: red; }) should have SCSS property
+      expect(lines?.[1]?.querySelector('.token-property')).not.toBeNull();
+      // Line 4 (<div>text</div>) should have HTML tags
+      expect(lines?.[3]?.querySelector('.token-tag')).not.toBeNull();
+      // Line 6 (.b { color: blue; }) should have SCSS property
+      expect(lines?.[5]?.querySelector('.token-property')).not.toBeNull();
+    });
+
+    it('should detect <style type="text/css"> with attributes', async () => {
+      element.setAttribute('language', 'html');
+      element.code = '<style type="text/css">\n.test { color: red; }\n</style>';
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const lines = element.shadowRoot?.querySelectorAll('.code-line');
+      // Line 2 should have SCSS property highlighting
+      expect(lines?.[1]?.querySelector('.token-property')).not.toBeNull();
+    });
+
+    it('should NOT activate mixed highlighting for non-HTML languages', async () => {
+      element.setAttribute('language', 'typescript');
+      element.code = "const style = '<style>.test { color: red; }</style>';";
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Should have TypeScript keyword, not SCSS property
+      const keyword = element.shadowRoot?.querySelector('.token-keyword');
+      expect(keyword).not.toBeNull();
+      expect(keyword?.textContent).toBe('const');
+    });
+  });
 });

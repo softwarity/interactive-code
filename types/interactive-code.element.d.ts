@@ -25,12 +25,14 @@ export declare class InteractiveCodeElement extends HTMLElement {
     get showLineNumbers(): boolean;
     /** Whether to show the copy button */
     get showCopy(): boolean;
+    /** Color scheme (light or dark mode) */
+    get colorScheme(): string;
     /** Code content (alternative to <textarea> child) */
     get code(): string | null;
     set code(value: string | null);
     connectedCallback(): void;
     disconnectedCallback(): void;
-    attributeChangedCallback(_name: string, oldValue: string | null, newValue: string | null): void;
+    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void;
     private render;
     private extractTemplate;
     private updateTemplateContent;
@@ -54,6 +56,10 @@ export declare class InteractiveCodeElement extends HTMLElement {
     private getCommentStyle;
     /** Extract the set of binding keys that have block comment end markers ${/key} */
     private findBlockCommentKeys;
+    private isOpeningStyleTag;
+    private isClosingStyleTag;
+    private isOpeningScriptTag;
+    private isClosingScriptTag;
     private renderTemplate;
     /** Render a single line of code with bindings, highlighting, and optional line number */
     private renderLine;
