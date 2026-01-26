@@ -324,7 +324,10 @@
       --code-copy-border: rgba(255,255,255,0.2);
       --code-copy-accent: #769aa5;
       --code-color-preview-border: rgba(255,255,255,0.3);
-      --code-editable-underline: #769aa5;
+      --code-interactive-highlight: #769aa5;
+      --code-interactive-color: inherit;
+      --code-interactive-bg-color: transparent;
+      --code-interactive-border-color: var(--code-interactive-highlight);
       --code-comment-color: #808080;
       border: 1px solid var(--border-color);
       border-top: none;
@@ -511,38 +514,74 @@
         </interactive-code>
       </section>
 
-      <!-- Editable Zone Style -->
+      <!-- Interactive Zone Style -->
       <section>
-        <h2>Editable Zone Style</h2>
-        <p>Customize how interactive zones look. Select a style to see the CSS and apply it to "Seen by user" blocks below.</p>
+        <h2>Interactive Zone Style</h2>
+        <p>Customize how interactive zones look. Select a style to see the CSS and apply it globally.</p>
 
         <interactive-code class="inline-code" language="scss" show-copy>
-          <textarea>/* Interactive zone style: ${editableStyle} */
-interactive-code {</textarea>
-          <textarea condition="editableStyle=wavy">  /* default — no custom property needed */</textarea>
-          <textarea condition="editableStyle=dotted">  --code-editable-text-decoration: underline dotted 1.5px;
-  --code-editable-text-underline-offset: 3px;</textarea>
-          <textarea condition="editableStyle=dashed">  --code-editable-text-decoration: underline dashed 1.5px;
-  --code-editable-text-underline-offset: 3px;</textarea>
-          <textarea condition="editableStyle=highlight">  --code-editable-text-decoration: none;
-  --code-editable-background: rgba(128,128,128,0.15);
-  --code-editable-border-radius: 3px;
-  --code-editable-padding: 1px 4px;</textarea>
-          <textarea condition="editableStyle=outline">  --code-editable-text-decoration: none;
-  --code-editable-outline: 1px dashed;
-  --code-editable-outline-offset: 2px;</textarea>
-          <textarea condition="editableStyle=pill">  --code-editable-text-decoration: none;
-  --code-editable-background: rgba(128,128,128,0.12);
-  --code-editable-border-radius: 12px;
-  --code-editable-padding: 1px 8px;</textarea>
-          <textarea condition="editableStyle=hand-drawn">  --code-editable-text-decoration: none;
-  --code-editable-border: 1.5px solid;
-  --code-editable-border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
-  --code-editable-padding: 2px 6px;</textarea>
-          <textarea condition="editableStyle=none">  --code-editable-text-decoration: none;</textarea>
-          <textarea>}</textarea>
-          <code-binding key="editableStyle" type="select" carousel options="wavy,dotted,dashed,highlight,outline,pill,hand-drawn,none" value="wavy"
-            onchange="applyEditableStyle(e.detail)"></code-binding>
+          <textarea>/* Interactive zone style: ${interactiveStyle} */</textarea>
+          <textarea condition="interactiveStyle=wavy">/* built-in default — no custom CSS needed */</textarea>
+          <textarea condition="interactiveStyle=dotted">interactive-code::part(interactive) {
+  text-decoration: underline dotted 1.5px var(--code-interactive-highlight);
+  text-underline-offset: 3px;
+}
+
+interactive-code::part(interactive):hover {
+  text-decoration-thickness: 2.5px;
+}</textarea>
+          <textarea condition="interactiveStyle=dashed">interactive-code::part(interactive) {
+  text-decoration: underline dashed 1.5px var(--code-interactive-highlight);
+  text-underline-offset: 3px;
+}
+
+interactive-code::part(interactive):hover {
+  text-decoration-thickness: 2.5px;
+}</textarea>
+          <textarea condition="interactiveStyle=highlight">interactive-code::part(interactive) {
+  text-decoration: none;
+  background: rgba(128,128,128,0.15);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+interactive-code::part(interactive):hover {
+  background: rgba(128,128,128,0.25);
+}</textarea>
+          <textarea condition="interactiveStyle=outline">interactive-code::part(interactive) {
+  text-decoration: none;
+  outline: 1px dashed var(--code-interactive-border-color);
+  outline-offset: 2px;
+}
+
+interactive-code::part(interactive):hover {
+  outline-style: solid;
+}</textarea>
+          <textarea condition="interactiveStyle=pill">interactive-code::part(interactive) {
+  text-decoration: none;
+  background: rgba(128,128,128,0.12);
+  border-radius: 12px;
+  padding: 1px 8px;
+}
+
+interactive-code::part(interactive):hover {
+  background: rgba(128,128,128,0.25);
+}</textarea>
+          <textarea condition="interactiveStyle=hand-drawn">interactive-code::part(interactive) {
+  text-decoration: none;
+  border: 1.5px solid var(--code-interactive-border-color);
+  border-radius: 55% 45% 50% 40% / 40% 50% 45% 55%;
+  padding: 2px 8px;
+}
+
+interactive-code::part(interactive):hover {
+  box-shadow: 0 0 0 1px var(--code-interactive-border-color);
+}</textarea>
+          <textarea condition="interactiveStyle=none">interactive-code::part(interactive) {
+  text-decoration: none;
+}</textarea>
+          <code-binding key="interactiveStyle" type="select" carousel options="hand-drawn,wavy,dotted,dashed,highlight,outline,pill,none" value="hand-drawn"
+            onchange="applyInteractiveStyle(e.detail)"></code-binding>
         </interactive-code>
       </section>
 
@@ -1346,59 +1385,53 @@ interactive-code {
     // Load initial theme (catppuccin)
     loadThemeCSS('catppuccin');
 
-    function applyEditableStyle(style) {
-      var els = document.querySelectorAll('.user-view interactive-code');
-      var props = [
-        '--code-editable-text-decoration',
-        '--code-editable-text-underline-offset',
-        '--code-editable-border-radius',
-        '--code-editable-border',
-        '--code-editable-outline',
-        '--code-editable-outline-offset',
-        '--code-editable-background',
-        '--code-editable-padding'
-      ];
-      els.forEach(function(el) {
-        props.forEach(function(p) { el.style.removeProperty(p); });
-        switch (style) {
-          case 'wavy':
-            break;
-          case 'dotted':
-            el.style.setProperty('--code-editable-text-decoration', 'underline dotted 1.5px');
-            el.style.setProperty('--code-editable-text-underline-offset', '3px');
-            break;
-          case 'dashed':
-            el.style.setProperty('--code-editable-text-decoration', 'underline dashed 1.5px');
-            el.style.setProperty('--code-editable-text-underline-offset', '3px');
-            break;
-          case 'highlight':
-            el.style.setProperty('--code-editable-text-decoration', 'none');
-            el.style.setProperty('--code-editable-background', 'rgba(128,128,128,0.15)');
-            el.style.setProperty('--code-editable-border-radius', '3px');
-            el.style.setProperty('--code-editable-padding', '1px 4px');
-            break;
-          case 'outline':
-            el.style.setProperty('--code-editable-text-decoration', 'none');
-            el.style.setProperty('--code-editable-outline', '1px dashed');
-            el.style.setProperty('--code-editable-outline-offset', '2px');
-            break;
-          case 'pill':
-            el.style.setProperty('--code-editable-text-decoration', 'none');
-            el.style.setProperty('--code-editable-background', 'rgba(128,128,128,0.12)');
-            el.style.setProperty('--code-editable-border-radius', '12px');
-            el.style.setProperty('--code-editable-padding', '1px 8px');
-            break;
-          case 'hand-drawn':
-            el.style.setProperty('--code-editable-text-decoration', 'none');
-            el.style.setProperty('--code-editable-border', '1.5px solid');
-            el.style.setProperty('--code-editable-border-radius', '255px 15px 225px 15px / 15px 225px 15px 255px');
-            el.style.setProperty('--code-editable-padding', '2px 6px');
-            break;
-          case 'none':
-            el.style.setProperty('--code-editable-text-decoration', 'none');
-            break;
-        }
-      });
+    // Apply initial interactive style (hand-drawn)
+    applyInteractiveStyle('hand-drawn');
+
+    function applyInteractiveStyle(style) {
+      var styleEl = document.getElementById('interactive-style-sheet');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'interactive-style-sheet';
+        document.head.appendChild(styleEl);
+      }
+      var s = 'interactive-code::part(interactive)';
+      var h = s + ':hover';
+      var hl = 'var(--code-interactive-highlight)';
+      var bc = 'var(--code-interactive-border-color)';
+      var css = '';
+      switch (style) {
+        case 'wavy':
+          break;
+        case 'dotted':
+          css = s + ' { text-decoration: underline dotted 1.5px ' + hl + '; text-underline-offset: 3px; } '
+              + h + ' { text-decoration-thickness: 2.5px; }';
+          break;
+        case 'dashed':
+          css = s + ' { text-decoration: underline dashed 1.5px ' + hl + '; text-underline-offset: 3px; } '
+              + h + ' { text-decoration-thickness: 2.5px; }';
+          break;
+        case 'highlight':
+          css = s + ' { text-decoration: none; background: rgba(128,128,128,0.15); border-radius: 3px; padding: 1px 4px; } '
+              + h + ' { background: rgba(128,128,128,0.25); }';
+          break;
+        case 'outline':
+          css = s + ' { text-decoration: none; outline: 1px dashed ' + bc + '; outline-offset: 2px; } '
+              + h + ' { outline-style: solid; }';
+          break;
+        case 'pill':
+          css = s + ' { text-decoration: none; background: rgba(128,128,128,0.12); border-radius: 12px; padding: 1px 8px; } '
+              + h + ' { background: rgba(128,128,128,0.25); }';
+          break;
+        case 'hand-drawn':
+          css = s + ' { text-decoration: none; border: 1.5px solid ' + bc + '; border-radius: 55% 45% 50% 40% / 40% 50% 45% 55%; padding: 2px 8px; } '
+              + h + ' { box-shadow: 0 0 0 1px ' + bc + '; }';
+          break;
+        case 'none':
+          css = s + ' { text-decoration: none; }';
+          break;
+      }
+      styleEl.textContent = css;
     }
   </script>
 </body>

@@ -1443,8 +1443,8 @@ describe('InteractiveCodeElement', () => {
     });
   });
 
-  describe('part="editable" attribute', () => {
-    it('should add part="editable" to boolean controls', async () => {
+  describe('part="interactive" attribute', () => {
+    it('should expose part="interactive" on boolean controls', async () => {
       element.innerHTML = `
         <textarea>\${enabled}</textarea>
         <code-binding key="enabled" type="boolean" value="true"></code-binding>
@@ -1454,10 +1454,10 @@ describe('InteractiveCodeElement', () => {
       await new Promise(resolve => setTimeout(resolve, 150));
 
       const control = element.shadowRoot?.querySelector('.inline-boolean');
-      expect(control?.getAttribute('part')).toBe('editable');
+      expect(control?.getAttribute('part')).toBe('interactive');
     });
 
-    it('should add part="editable" to number controls', async () => {
+    it('should add part="interactive" to number controls', async () => {
       element.innerHTML = `
         <textarea>\${count}</textarea>
         <code-binding key="count" type="number" value="5"></code-binding>
@@ -1467,10 +1467,10 @@ describe('InteractiveCodeElement', () => {
       await new Promise(resolve => setTimeout(resolve, 150));
 
       const control = element.shadowRoot?.querySelector('.inline-number');
-      expect(control?.getAttribute('part')).toBe('editable');
+      expect(control?.getAttribute('part')).toBe('interactive');
     });
 
-    it('should add part="editable" to string controls', async () => {
+    it('should add part="interactive" to string controls', async () => {
       element.innerHTML = `
         <textarea>\${name}</textarea>
         <code-binding key="name" type="string" value="test"></code-binding>
@@ -1480,10 +1480,10 @@ describe('InteractiveCodeElement', () => {
       await new Promise(resolve => setTimeout(resolve, 150));
 
       const control = element.shadowRoot?.querySelector('.inline-string');
-      expect(control?.getAttribute('part')).toBe('editable');
+      expect(control?.getAttribute('part')).toBe('interactive');
     });
 
-    it('should add part="editable" to line toggle controls', async () => {
+    it('should add part="interactive" to line toggle controls', async () => {
       element.setAttribute('language', 'scss');
       element.innerHTML = `
         <textarea>\${toggle}color: red;</textarea>
@@ -1494,10 +1494,10 @@ describe('InteractiveCodeElement', () => {
       await new Promise(resolve => setTimeout(resolve, 150));
 
       const toggle = element.shadowRoot?.querySelector('.line-toggle');
-      expect(toggle?.getAttribute('part')).toBe('editable');
+      expect(toggle?.getAttribute('part')).toBe('interactive');
     });
 
-    it('should add part="editable" to block toggle controls', async () => {
+    it('should add part="interactive" to block toggle controls', async () => {
       element.setAttribute('language', 'typescript');
       element.innerHTML = `
         <textarea>\${block}const x = 1;\${/block}</textarea>
@@ -1508,7 +1508,7 @@ describe('InteractiveCodeElement', () => {
       await new Promise(resolve => setTimeout(resolve, 150));
 
       const toggle = element.shadowRoot?.querySelector('.block-toggle');
-      expect(toggle?.getAttribute('part')).toBe('editable');
+      expect(toggle?.getAttribute('part')).toBe('interactive');
     });
   });
 
@@ -1543,7 +1543,7 @@ describe('InteractiveCodeElement', () => {
       expect(valueSpan?.textContent).toBe('green');
     });
 
-    it('should have role="button" and part="editable" on carousel', async () => {
+    it('should have role="button" and part="interactive" on carousel', async () => {
       element.innerHTML = `
         <textarea>\${color}</textarea>
         <code-binding key="color" type="select" carousel options="red, green, blue" value="red"></code-binding>
@@ -1554,7 +1554,7 @@ describe('InteractiveCodeElement', () => {
 
       const carousel = element.shadowRoot?.querySelector('.inline-select-carousel');
       expect(carousel?.getAttribute('role')).toBe('button');
-      expect(carousel?.getAttribute('part')).toBe('editable');
+      expect(carousel?.getAttribute('part')).toBe('interactive');
     });
 
     it('should cycle value on click via toggle action', async () => {
@@ -1574,6 +1574,25 @@ describe('InteractiveCodeElement', () => {
       expect(binding.value).toBe('green');
       const valueSpan = element.shadowRoot?.querySelector('.inline-select-carousel .token-string');
       expect(valueSpan?.textContent).toBe('green');
+    });
+
+    it('should cycle backward on shift+click via previous()', async () => {
+      element.innerHTML = `
+        <textarea>\${color}</textarea>
+        <code-binding key="color" type="select" carousel options="red, green, blue" value="green"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const carousel = element.shadowRoot?.querySelector('.inline-select-carousel') as HTMLElement;
+      const shiftClick = new MouseEvent('click', { bubbles: true, shiftKey: true });
+      carousel.dispatchEvent(shiftClick);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const binding = element.querySelector('code-binding') as CodeBindingElement;
+      expect(binding.value).toBe('red');
     });
 
     it('should also work with 2 options when carousel is set', async () => {
@@ -1608,29 +1627,29 @@ describe('InteractiveCodeElement', () => {
     });
   });
 
-  describe('editable zone CSS custom properties', () => {
-    it('should use --code-editable-text-decoration in CSS', () => {
+  describe('interactive zone CSS custom properties', () => {
+    it('should use --code-interactive-text-decoration in CSS', () => {
       document.body.appendChild(element);
       const style = element.shadowRoot?.querySelector('style');
-      expect(style?.textContent).toContain('var(--code-editable-text-decoration,');
+      expect(style?.textContent).toContain('var(--code-interactive-text-decoration,');
     });
 
-    it('should use --code-editable-border-radius in CSS', () => {
+    it('should use --code-interactive-border-radius in CSS', () => {
       document.body.appendChild(element);
       const style = element.shadowRoot?.querySelector('style');
-      expect(style?.textContent).toContain('var(--code-editable-border-radius,');
+      expect(style?.textContent).toContain('var(--code-interactive-border-radius,');
     });
 
-    it('should use --code-editable-border in CSS', () => {
+    it('should use --code-interactive-border in CSS', () => {
       document.body.appendChild(element);
       const style = element.shadowRoot?.querySelector('style');
-      expect(style?.textContent).toContain('var(--code-editable-border,');
+      expect(style?.textContent).toContain('var(--code-interactive-border,');
     });
 
-    it('should use --code-editable-padding in CSS', () => {
+    it('should use --code-interactive-padding in CSS', () => {
       document.body.appendChild(element);
       const style = element.shadowRoot?.querySelector('style');
-      expect(style?.textContent).toContain('var(--code-editable-padding,');
+      expect(style?.textContent).toContain('var(--code-interactive-padding,');
     });
   });
 });

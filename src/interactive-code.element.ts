@@ -63,6 +63,7 @@ export class InteractiveCodeElement extends HTMLElement {
 
   // Bound event handlers for proper cleanup
   private _boundChangeHandler: (e: Event) => void;
+  private _boundShadowMousedownHandler: (e: Event) => void;
   private _boundShadowClickHandler: (e: Event) => void;
   private _boundShadowChangeHandler: (e: Event) => void;
   private _boundShadowInputHandler: (e: Event) => void;
@@ -72,6 +73,7 @@ export class InteractiveCodeElement extends HTMLElement {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
     this._boundChangeHandler = this._handleChange.bind(this);
+    this._boundShadowMousedownHandler = this._handleShadowMousedown.bind(this);
     this._boundShadowClickHandler = this._handleShadowClick.bind(this);
     this._boundShadowChangeHandler = this._handleShadowChange.bind(this);
     this._boundShadowInputHandler = this._handleShadowInput.bind(this);
@@ -173,6 +175,7 @@ export class InteractiveCodeElement extends HTMLElement {
     }
     // Remove event listeners
     this.removeEventListener('change', this._boundChangeHandler);
+    this.shadow.removeEventListener('mousedown', this._boundShadowMousedownHandler);
     this.shadow.removeEventListener('click', this._boundShadowClickHandler);
     this.shadow.removeEventListener('change', this._boundShadowChangeHandler);
     this.shadow.removeEventListener('input', this._boundShadowInputHandler);
@@ -309,6 +312,7 @@ export class InteractiveCodeElement extends HTMLElement {
     this.addEventListener('change', this._boundChangeHandler);
 
     // Handle clicks on interactive elements and copy button
+    this.shadow.addEventListener('mousedown', this._boundShadowMousedownHandler);
     this.shadow.addEventListener('click', this._boundShadowClickHandler);
 
     // Handle select changes
@@ -325,6 +329,16 @@ export class InteractiveCodeElement extends HTMLElement {
     const target = e.target as CodeBindingElement;
     if (target.tagName === 'CODE-BINDING' && !this._internalChange) {
       this.updateCode();
+    }
+  }
+
+  private _handleShadowMousedown(e: Event) {
+    const me = e as MouseEvent;
+    if (me.shiftKey) {
+      const target = me.target as HTMLElement;
+      if (target.closest('.inline-select-carousel')) {
+        e.preventDefault();
+      }
     }
   }
 
@@ -350,7 +364,8 @@ export class InteractiveCodeElement extends HTMLElement {
     const binding = this.bindings.get(key);
     if (!binding) return;
 
-    this.handleAction(binding, action);
+    const shiftKey = (e as MouseEvent).shiftKey || false;
+    this.handleAction(binding, action, shiftKey);
   }
 
   private _handleShadowChange(e: Event) {
@@ -502,10 +517,14 @@ export class InteractiveCodeElement extends HTMLElement {
     }
   }
 
-  private handleAction(binding: CodeBindingElement, action: string | undefined) {
+  private handleAction(binding: CodeBindingElement, action: string | undefined, shiftKey: boolean = false) {
     switch (action) {
       case 'toggle':
-        binding.toggle();
+        if (shiftKey && binding.carousel) {
+          binding.previous();
+        } else {
+          binding.toggle();
+        }
         break;
       case 'edit-number':
         const numInput = this.shadow.querySelector(`#num-${binding.key}`) as HTMLInputElement;
@@ -702,7 +721,7 @@ export class InteractiveCodeElement extends HTMLElement {
         const marker = `__COMMENT_START_${markerIndex++}__`;
         const isEnabled = binding.value === true;
         const toggleClass = isEnabled ? 'block-toggle-inactive' : 'block-toggle-active';
-        const toggleHtml = `<span class="block-toggle inline-control ${toggleClass}" part="editable" data-binding="${key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle block comment ${key}">${commentStyle.blockIndicator}</span>`;
+        const toggleHtml = `<span class="block-toggle inline-control ${toggleClass}" part="interactive" data-binding="${key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle block comment ${key}">${commentStyle.blockIndicator}</span>`;
         if (isEnabled) {
           markers.set(marker, toggleHtml);
         } else {
@@ -762,7 +781,7 @@ export class InteractiveCodeElement extends HTMLElement {
     if (lineToggleBinding) {
       const isEnabled = lineToggleBinding.value === true;
       const toggleClass = isEnabled ? 'line-toggle-inactive' : 'line-toggle-active';
-      const toggleHtml = `<span class="line-toggle inline-control ${toggleClass}" part="editable" data-binding="${lineToggleBinding.key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle line comment ${lineToggleBinding.key}">${commentStyle.lineIndicator}</span>`;
+      const toggleHtml = `<span class="line-toggle inline-control ${toggleClass}" part="interactive" data-binding="${lineToggleBinding.key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle line comment ${lineToggleBinding.key}">${commentStyle.lineIndicator}</span>`;
       const commentSuffix = this.language === 'html' && !isEnabled ? `<span class="token-comment">${commentStyle.blockEnd}</span>` : '';
       return `<span class="code-line${isEnabled ? '' : ' line-disabled'}">${lineNumHtml}<span class="indent">${indent}</span>${toggleHtml}${processedContent}${commentSuffix}</span>`;
     } else if (shouldGrayLine) {
@@ -784,11 +803,11 @@ export class InteractiveCodeElement extends HTMLElement {
 
     switch (binding.type) {
       case 'boolean':
-        return `<span class="inline-control inline-boolean${disabledClass}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
+        return `<span class="inline-control inline-boolean${disabledClass}" part="interactive" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
           `<span class="token-keyword">${escValue}</span></span>`;
 
       case 'number':
-        return `<span class="inline-control inline-number${disabledClass}" part="editable" data-binding="${escKey}" data-action="edit-number" role="spinbutton" tabindex="${tabindex}" aria-label="Edit ${escKey}" aria-valuenow="${escValue}"${binding.min !== undefined ? ` aria-valuemin="${binding.min}"` : ''}${binding.max !== undefined ? ` aria-valuemax="${binding.max}"` : ''}>` +
+        return `<span class="inline-control inline-number${disabledClass}" part="interactive" data-binding="${escKey}" data-action="edit-number" role="spinbutton" tabindex="${tabindex}" aria-label="Edit ${escKey}" aria-valuenow="${escValue}"${binding.min !== undefined ? ` aria-valuemin="${binding.min}"` : ''}${binding.max !== undefined ? ` aria-valuemax="${binding.max}"` : ''}>` +
           `<span class="token-number">${escValue}</span>` +
           `<input type="number" class="inline-number-input" id="num-${escKey}" data-binding="${escKey}" ` +
           `value="${escValue}" ${binding.min !== undefined ? `min="${binding.min}"` : ''} ` +
@@ -796,7 +815,7 @@ export class InteractiveCodeElement extends HTMLElement {
           `${binding.step !== undefined ? `step="${binding.step}"` : ''}></span>`;
 
       case 'string':
-        return `<span class="inline-control inline-string${disabledClass}" part="editable" data-binding="${escKey}" data-action="edit-string" role="textbox" tabindex="${tabindex}" aria-label="Edit ${escKey}">` +
+        return `<span class="inline-control inline-string${disabledClass}" part="interactive" data-binding="${escKey}" data-action="edit-string" role="textbox" tabindex="${tabindex}" aria-label="Edit ${escKey}">` +
           `<span class="token-string">${escValue}</span>` +
           `<input type="text" class="inline-string-input" id="str-${escKey}" data-binding="${escKey}" ` +
           `value="${escValue}"></span>`;
@@ -805,12 +824,12 @@ export class InteractiveCodeElement extends HTMLElement {
         const options = binding.options;
         // Carousel mode: click to cycle through all options
         if (binding.carousel) {
-          return `<span class="inline-control inline-select-carousel${disabledClass}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Cycle ${escKey}: ${escValue}">` +
+          return `<span class="inline-control inline-select-carousel${disabledClass}" part="interactive" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Cycle ${escKey}: ${escValue}">` +
             `<span class="token-string">${escValue}</span></span>`;
         }
         // For 2 options, render as toggle (like boolean)
         if (options.length === 2) {
-          return `<span class="inline-control inline-select-toggle${disabledClass}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
+          return `<span class="inline-control inline-select-toggle${disabledClass}" part="interactive" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
             `<span class="token-string">${escValue}</span></span>`;
         }
         // For 3+ options, render as hidden dropdown that shows on click
@@ -820,14 +839,14 @@ export class InteractiveCodeElement extends HTMLElement {
             return `<option value="${escOpt}"${opt === value ? ' selected' : ''}>${escOpt}</option>`;
           })
           .join('');
-        return `<span class="inline-control inline-select-wrapper${disabledClass}" part="editable" data-binding="${escKey}" data-action="edit-select" role="listbox" tabindex="${tabindex}" aria-label="Select ${escKey}">` +
+        return `<span class="inline-control inline-select-wrapper${disabledClass}" part="interactive" data-binding="${escKey}" data-action="edit-select" role="listbox" tabindex="${tabindex}" aria-label="Select ${escKey}">` +
           `<span class="token-string">${escValue}</span>` +
           `<select class="inline-select-input" id="sel-${escKey}" data-binding="${escKey}">${optionsHtml}</select></span>`;
       }
 
       case 'color': {
         const escColor = this.escapeHtml(String(value || '#000000'));
-        return `<span class="inline-control inline-color${disabledClass}" part="editable" data-binding="${escKey}" data-action="edit-color" role="button" tabindex="${tabindex}" aria-label="Pick color ${escKey}: ${escValue}">` +
+        return `<span class="inline-control inline-color${disabledClass}" part="interactive" data-binding="${escKey}" data-action="edit-color" role="button" tabindex="${tabindex}" aria-label="Pick color ${escKey}: ${escValue}">` +
           `<span class="color-preview" style="background:${escColor}"></span>` +
           `<span class="token-string">${escValue}</span>` +
           `<input type="color" id="color-${escKey}" data-binding="${escKey}" value="${escColor}"></span>`;
@@ -839,7 +858,7 @@ export class InteractiveCodeElement extends HTMLElement {
         const attrDisplay = attrValue
           ? `<span class="token-attr-name">${escKey}</span><span class="token-punctuation">=</span><span class="token-attr-value">${this.escapeHtml(attrValue.slice(1))}</span>`
           : `<span class="token-attr-name">${escKey}</span>`;
-        return `<span class="inline-control inline-attribute${disabledClass}${isActive ? '' : ' attribute-disabled'}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle attribute ${escKey}">${attrDisplay}</span>`;
+        return `<span class="inline-control inline-attribute${disabledClass}${isActive ? '' : ' attribute-disabled'}" part="interactive" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle attribute ${escKey}">${attrDisplay}</span>`;
       }
 
       case 'readonly':
@@ -1006,6 +1025,9 @@ export class InteractiveCodeElement extends HTMLElement {
 
       :host {
         display: block;
+        --code-interactive-color: inherit;
+        --code-interactive-bg-color: transparent;
+        --code-interactive-border-color: var(--code-interactive-highlight, light-dark(#20999d, #769aa5));
       }
 
       .code-block {
@@ -1069,21 +1091,23 @@ export class InteractiveCodeElement extends HTMLElement {
       .token-unknown { color: var(--token-unknown, light-dark(#20999d, #769aa5)); }
       .token-binding-key { color: var(--token-binding-key, light-dark(#20999d, #769aa5)); }
 
-      /* Interactive controls — decoration customizable via CSS custom properties */
+      /* Interactive controls — decoration customizable via CSS custom properties and ::part(interactive) */
       .inline-control {
         cursor: pointer;
         transition: background 0.15s ease;
-        text-decoration: var(--code-editable-text-decoration, underline wavy var(--code-editable-underline, light-dark(#20999d, #769aa5)));
-        text-underline-offset: var(--code-editable-text-underline-offset, 3px);
-        border-radius: var(--code-editable-border-radius, 3px);
-        border: var(--code-editable-border, none);
-        outline: var(--code-editable-outline, none);
-        outline-offset: var(--code-editable-outline-offset, 0px);
-        background: var(--code-editable-background, transparent);
+        color: var(--code-interactive-color, inherit);
+        text-decoration: var(--code-interactive-text-decoration, underline wavy var(--code-interactive-highlight, light-dark(#20999d, #769aa5)));
+        text-underline-offset: var(--code-interactive-text-underline-offset, 3px);
+        border-radius: var(--code-interactive-border-radius, 3px);
+        border: var(--code-interactive-border, none);
+        outline: var(--code-interactive-outline, none);
+        outline-offset: var(--code-interactive-outline-offset, 0px);
+        background: var(--code-interactive-background, transparent);
       }
 
       .inline-control:hover {
         background: var(--code-hover-bg, light-dark(rgba(0,0,0,0.05), rgba(255,255,255,0.1)));
+        box-shadow: var(--code-interactive-hover-shadow, none);
       }
 
       .inline-control:focus-visible {
@@ -1104,7 +1128,7 @@ export class InteractiveCodeElement extends HTMLElement {
       .line-toggle,
       .block-toggle {
         margin-right: 4px;
-        padding: var(--code-editable-padding, 0 2px);
+        padding: var(--code-interactive-padding, 0 2px);
       }
 
       .block-end {
@@ -1122,12 +1146,12 @@ export class InteractiveCodeElement extends HTMLElement {
       .line-toggle-active,
       .block-toggle-active,
       .block-end.block-toggle-active {
-        color: var(--code-editable-underline, light-dark(#20999d, #769aa5));
+        color: var(--code-interactive-highlight, light-dark(#20999d, #769aa5));
       }
 
       /* Attribute binding - strikethrough when disabled */
       .inline-attribute {
-        padding: var(--code-editable-padding, 0 2px);
+        padding: var(--code-interactive-padding, 0 2px);
       }
 
       .inline-attribute.attribute-disabled {
@@ -1140,7 +1164,7 @@ export class InteractiveCodeElement extends HTMLElement {
       .inline-string,
       .inline-select-toggle,
       .inline-select-carousel {
-        padding: var(--code-editable-padding, 0 4px);
+        padding: var(--code-interactive-padding, 0 4px);
         position: relative;
       }
 
