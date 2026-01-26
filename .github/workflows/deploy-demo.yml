@@ -46,6 +46,7 @@ jobs:
           cp -r demo/* gh-pages/
           # Update paths in demo to use CDN (escape dots in patterns)
           sed -i 's|\.\./src/index\.ts|https://unpkg.com/@softwarity/interactive-code|g' gh-pages/index.html
+          sed -i 's|\.\./themes/|https://unpkg.com/@softwarity/interactive-code/themes/|g' gh-pages/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
