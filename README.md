@@ -15,6 +15,10 @@ A Web Component for displaying syntax-highlighted code with interactive bindings
 - **Framework Agnostic**: Works with Angular, React, Vue, or vanilla JS
 - **Zero Dependencies**: Pure Web Components
 
+## Demo
+
+[Live demo](https://softwarity.github.io/interactive-code/)
+
 ## Installation
 
 ### npm
