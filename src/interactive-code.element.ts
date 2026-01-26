@@ -624,7 +624,7 @@ export class InteractiveCodeElement extends HTMLElement {
     blockCommentKeys: Set<string>,
     openBlockComments: Set<string>,
     lineNumber: number,
-    effectiveLanguage: Language = this.language
+    effectiveLanguage: Language
   ): string {
     const indentMatch = line.match(/^(\s*)/);
     const indent = indentMatch ? indentMatch[1] : '';
@@ -666,7 +666,7 @@ export class InteractiveCodeElement extends HTMLElement {
     commentStyle: CommentStyle,
     blockCommentKeys: Set<string>,
     openBlockComments: Set<string>,
-    effectiveLanguage: Language = this.language
+    effectiveLanguage: Language
   ): { processedContent: string; blockStartsOnLine: string[]; blockEndsOnLine: string[] } {
     let markerIndex = 0;
     const markers = new Map<string, string>();
@@ -856,6 +856,8 @@ export class InteractiveCodeElement extends HTMLElement {
         btn.setAttribute('aria-label', 'Copy code to clipboard');
         this._copyTimeout = null;
       }, 2000);
+    }).catch(() => {
+      // Clipboard access denied — fail silently
     });
   }
 
@@ -863,12 +865,12 @@ export class InteractiveCodeElement extends HTMLElement {
     switch (language) {
       case 'html':
         return this.highlightHtml(text);
+      case 'scss':
+        return this.highlightScss(text);
       case 'typescript':
         return this.highlightTypeScript(text);
       case 'shell':
         return this.highlightShell(text);
-      default:
-        return this.highlightScss(text);
     }
   }
 
@@ -1015,17 +1017,7 @@ export class InteractiveCodeElement extends HTMLElement {
         white-space: pre;
       }
 
-      .inline-control.disabled {
-        opacity: 0.5;
-        cursor: default;
-      }
-
-      .inline-control.disabled:hover {
-        background: transparent;
-      }
-
-      .line-disabled,
-      .block-content-disabled {
+      .line-disabled {
         opacity: 0.3;
       }
 
@@ -1068,8 +1060,13 @@ export class InteractiveCodeElement extends HTMLElement {
       }
 
       .inline-control.disabled {
+        opacity: 0.5;
         text-decoration: none;
         cursor: default;
+      }
+
+      .inline-control.disabled:hover {
+        background: transparent;
       }
 
       .line-toggle,
