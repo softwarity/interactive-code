@@ -252,21 +252,31 @@ export class InteractiveCodeElement extends HTMLElement {
     // No condition means always show
     if (condition === null || condition === '') return true;
 
-    // Handle negation: "!key"
+    // Handle negation: "!key" or "!key=value"
     const isNegated = condition.startsWith('!');
-    const key = isNegated ? condition.slice(1).trim() : condition.trim();
+    const expr = isNegated ? condition.slice(1).trim() : condition.trim();
 
-    // Get the binding value
+    // Handle value comparison: "key=value"
+    const eqIndex = expr.indexOf('=');
+    if (eqIndex !== -1) {
+      const key = expr.slice(0, eqIndex).trim();
+      const expectedValue = expr.slice(eqIndex + 1).trim();
+      const binding = this.bindings.get(key);
+      if (!binding) return isNegated;
+      const matches = String(binding.value) === expectedValue;
+      return isNegated ? !matches : matches;
+    }
+
+    // Truthy/falsy check
+    const key = expr;
     const binding = this.bindings.get(key);
     if (!binding) {
       // If binding doesn't exist yet, treat as falsy
-      // This handles the case where condition references a binding that hasn't been collected yet
       return isNegated;
     }
 
     const value = binding.value;
 
-    // Evaluate truthiness
     // For select type, 'undefined' string is falsy
     const isTruthy = value !== undefined && value !== null && value !== false && value !== 'undefined';
 
@@ -286,7 +296,10 @@ export class InteractiveCodeElement extends HTMLElement {
   private hasConditionDependency(key: string): boolean {
     return this.conditionalContents.some(cc => {
       if (!cc.condition) return false;
-      const condKey = cc.condition.startsWith('!') ? cc.condition.slice(1).trim() : cc.condition.trim();
+      const expr = cc.condition.startsWith('!') ? cc.condition.slice(1).trim() : cc.condition.trim();
+      // Handle value comparison: "key=value" — extract just the key part
+      const eqIndex = expr.indexOf('=');
+      const condKey = eqIndex !== -1 ? expr.slice(0, eqIndex).trim() : expr;
       return condKey === key;
     });
   }
@@ -683,7 +696,7 @@ export class InteractiveCodeElement extends HTMLElement {
         const marker = `__COMMENT_START_${markerIndex++}__`;
         const isEnabled = binding.value === true;
         const toggleClass = isEnabled ? 'block-toggle-inactive' : 'block-toggle-active';
-        const toggleHtml = `<span class="block-toggle inline-control ${toggleClass}" data-binding="${key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle block comment ${key}">${commentStyle.blockIndicator}</span>`;
+        const toggleHtml = `<span class="block-toggle inline-control ${toggleClass}" part="editable" data-binding="${key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle block comment ${key}">${commentStyle.blockIndicator}</span>`;
         if (isEnabled) {
           markers.set(marker, toggleHtml);
         } else {
@@ -743,7 +756,7 @@ export class InteractiveCodeElement extends HTMLElement {
     if (lineToggleBinding) {
       const isEnabled = lineToggleBinding.value === true;
       const toggleClass = isEnabled ? 'line-toggle-inactive' : 'line-toggle-active';
-      const toggleHtml = `<span class="line-toggle inline-control ${toggleClass}" data-binding="${lineToggleBinding.key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle line comment ${lineToggleBinding.key}">${commentStyle.lineIndicator}</span>`;
+      const toggleHtml = `<span class="line-toggle inline-control ${toggleClass}" part="editable" data-binding="${lineToggleBinding.key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle line comment ${lineToggleBinding.key}">${commentStyle.lineIndicator}</span>`;
       const commentSuffix = this.language === 'html' && !isEnabled ? `<span class="token-comment">${commentStyle.blockEnd}</span>` : '';
       return `<span class="code-line${isEnabled ? '' : ' line-disabled'}">${lineNumHtml}<span class="indent">${indent}</span>${toggleHtml}${processedContent}${commentSuffix}</span>`;
     } else if (shouldGrayLine) {
@@ -765,11 +778,11 @@ export class InteractiveCodeElement extends HTMLElement {
 
     switch (binding.type) {
       case 'boolean':
-        return `<span class="inline-control inline-boolean${disabledClass}" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
+        return `<span class="inline-control inline-boolean${disabledClass}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
           `<span class="token-keyword">${escValue}</span></span>`;
 
       case 'number':
-        return `<span class="inline-control inline-number${disabledClass}" data-binding="${escKey}" data-action="edit-number" role="spinbutton" tabindex="${tabindex}" aria-label="Edit ${escKey}" aria-valuenow="${escValue}"${binding.min !== undefined ? ` aria-valuemin="${binding.min}"` : ''}${binding.max !== undefined ? ` aria-valuemax="${binding.max}"` : ''}>` +
+        return `<span class="inline-control inline-number${disabledClass}" part="editable" data-binding="${escKey}" data-action="edit-number" role="spinbutton" tabindex="${tabindex}" aria-label="Edit ${escKey}" aria-valuenow="${escValue}"${binding.min !== undefined ? ` aria-valuemin="${binding.min}"` : ''}${binding.max !== undefined ? ` aria-valuemax="${binding.max}"` : ''}>` +
           `<span class="token-number">${escValue}</span>` +
           `<input type="number" class="inline-number-input" id="num-${escKey}" data-binding="${escKey}" ` +
           `value="${escValue}" ${binding.min !== undefined ? `min="${binding.min}"` : ''} ` +
@@ -777,7 +790,7 @@ export class InteractiveCodeElement extends HTMLElement {
           `${binding.step !== undefined ? `step="${binding.step}"` : ''}></span>`;
 
       case 'string':
-        return `<span class="inline-control inline-string${disabledClass}" data-binding="${escKey}" data-action="edit-string" role="textbox" tabindex="${tabindex}" aria-label="Edit ${escKey}">` +
+        return `<span class="inline-control inline-string${disabledClass}" part="editable" data-binding="${escKey}" data-action="edit-string" role="textbox" tabindex="${tabindex}" aria-label="Edit ${escKey}">` +
           `<span class="token-string">${escValue}</span>` +
           `<input type="text" class="inline-string-input" id="str-${escKey}" data-binding="${escKey}" ` +
           `value="${escValue}"></span>`;
@@ -786,7 +799,7 @@ export class InteractiveCodeElement extends HTMLElement {
         const options = binding.options;
         // For 2 options, render as toggle (like boolean)
         if (options.length === 2) {
-          return `<span class="inline-control inline-select-toggle${disabledClass}" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
+          return `<span class="inline-control inline-select-toggle${disabledClass}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
             `<span class="token-string">${escValue}</span></span>`;
         }
         // For 3+ options, render as hidden dropdown that shows on click
@@ -796,14 +809,14 @@ export class InteractiveCodeElement extends HTMLElement {
             return `<option value="${escOpt}"${opt === value ? ' selected' : ''}>${escOpt}</option>`;
           })
           .join('');
-        return `<span class="inline-control inline-select-wrapper${disabledClass}" data-binding="${escKey}" data-action="edit-select" role="listbox" tabindex="${tabindex}" aria-label="Select ${escKey}">` +
+        return `<span class="inline-control inline-select-wrapper${disabledClass}" part="editable" data-binding="${escKey}" data-action="edit-select" role="listbox" tabindex="${tabindex}" aria-label="Select ${escKey}">` +
           `<span class="token-string">${escValue}</span>` +
           `<select class="inline-select-input" id="sel-${escKey}" data-binding="${escKey}">${optionsHtml}</select></span>`;
       }
 
       case 'color': {
         const escColor = this.escapeHtml(String(value || '#000000'));
-        return `<span class="inline-control inline-color${disabledClass}" data-binding="${escKey}" data-action="edit-color" role="button" tabindex="${tabindex}" aria-label="Pick color ${escKey}: ${escValue}">` +
+        return `<span class="inline-control inline-color${disabledClass}" part="editable" data-binding="${escKey}" data-action="edit-color" role="button" tabindex="${tabindex}" aria-label="Pick color ${escKey}: ${escValue}">` +
           `<span class="color-preview" style="background:${escColor}"></span>` +
           `<span class="token-string">${escValue}</span>` +
           `<input type="color" id="color-${escKey}" data-binding="${escKey}" value="${escColor}"></span>`;
@@ -815,7 +828,7 @@ export class InteractiveCodeElement extends HTMLElement {
         const attrDisplay = attrValue
           ? `<span class="token-attr-name">${escKey}</span><span class="token-punctuation">=</span><span class="token-attr-value">${this.escapeHtml(attrValue.slice(1))}</span>`
           : `<span class="token-attr-name">${escKey}</span>`;
-        return `<span class="inline-control inline-attribute${disabledClass}${isActive ? '' : ' attribute-disabled'}" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle attribute ${escKey}">${attrDisplay}</span>`;
+        return `<span class="inline-control inline-attribute${disabledClass}${isActive ? '' : ' attribute-disabled'}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle attribute ${escKey}">${attrDisplay}</span>`;
       }
 
       case 'readonly':
@@ -1045,13 +1058,17 @@ export class InteractiveCodeElement extends HTMLElement {
       .token-unknown { color: var(--token-unknown, light-dark(#20999d, #769aa5)); }
       .token-binding-key { color: var(--token-binding-key, light-dark(#20999d, #769aa5)); }
 
-      /* Interactive controls */
+      /* Interactive controls — decoration customizable via CSS custom properties */
       .inline-control {
         cursor: pointer;
-        border-radius: 3px;
         transition: background 0.15s ease;
-        text-decoration: underline wavy var(--code-editable-underline, light-dark(#20999d, #769aa5));
-        text-underline-offset: 3px;
+        text-decoration: var(--code-editable-text-decoration, underline wavy var(--code-editable-underline, light-dark(#20999d, #769aa5)));
+        text-underline-offset: var(--code-editable-text-underline-offset, 3px);
+        border-radius: var(--code-editable-border-radius, 3px);
+        border: var(--code-editable-border, none);
+        outline: var(--code-editable-outline, none);
+        outline-offset: var(--code-editable-outline-offset, 0px);
+        background: var(--code-editable-background, transparent);
       }
 
       .inline-control:hover {
@@ -1076,7 +1093,7 @@ export class InteractiveCodeElement extends HTMLElement {
       .line-toggle,
       .block-toggle {
         margin-right: 4px;
-        padding: 0 2px;
+        padding: var(--code-editable-padding, 0 2px);
       }
 
       .block-end {
@@ -1099,7 +1116,7 @@ export class InteractiveCodeElement extends HTMLElement {
 
       /* Attribute binding - strikethrough when disabled */
       .inline-attribute {
-        padding: 0 2px;
+        padding: var(--code-editable-padding, 0 2px);
       }
 
       .inline-attribute.attribute-disabled {
@@ -1111,7 +1128,7 @@ export class InteractiveCodeElement extends HTMLElement {
       .inline-number,
       .inline-string,
       .inline-select-toggle {
-        padding: 0 4px;
+        padding: var(--code-editable-padding, 0 4px);
         position: relative;
       }
 

@@ -1334,4 +1334,207 @@ describe('InteractiveCodeElement', () => {
       expect(keyword?.textContent).toBe('const');
     });
   });
+
+  describe('condition value matching', () => {
+    it('should show textarea when condition key=value matches', async () => {
+      element.innerHTML = `
+        <textarea>header</textarea>
+        <textarea condition="style=wavy">wavy content</textarea>
+        <textarea condition="style=dotted">dotted content</textarea>
+        <code-binding key="style" type="select" options="wavy,dotted,dashed" value="wavy"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('wavy content');
+      expect(code).not.toContain('dotted content');
+    });
+
+    it('should update when value changes to match different condition', async () => {
+      element.innerHTML = `
+        <textarea condition="style=wavy">wavy content</textarea>
+        <textarea condition="style=dotted">dotted content</textarea>
+        <code-binding key="style" type="select" options="wavy,dotted" value="wavy"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const binding = element.querySelector('code-binding') as any;
+      binding.value = 'dotted';
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).not.toContain('wavy content');
+      expect(code).toContain('dotted content');
+    });
+
+    it('should support negated value matching with !key=value', async () => {
+      element.innerHTML = `
+        <textarea condition="!style=none">has style</textarea>
+        <textarea condition="style=none">no style</textarea>
+        <code-binding key="style" type="select" options="wavy,none" value="wavy"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('has style');
+      expect(code).not.toContain('no style');
+    });
+
+    it('should not match when binding value differs from expected', async () => {
+      element.innerHTML = `
+        <textarea condition="style=highlight">highlight content</textarea>
+        <code-binding key="style" type="select" options="wavy,highlight" value="wavy"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).not.toContain('highlight content');
+    });
+
+    it('should re-evaluate key=value conditions when binding changes externally', async () => {
+      element.innerHTML = `
+        <textarea>header</textarea>
+        <textarea condition="style=a">content A</textarea>
+        <textarea condition="style=b">content B</textarea>
+        <code-binding key="style" type="select" options="a,b,c" value="a"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      let code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('content A');
+      expect(code).not.toContain('content B');
+
+      // Change binding value externally (triggers _handleChange → updateCode)
+      const binding = element.querySelector('code-binding') as any;
+      binding.value = 'b';
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).not.toContain('content A');
+      expect(code).toContain('content B');
+    });
+
+    it('should coexist with truthy/falsy conditions', async () => {
+      element.innerHTML = `
+        <textarea condition="enabled">enabled content</textarea>
+        <textarea condition="style=wavy">wavy content</textarea>
+        <code-binding key="enabled" type="boolean" value="true"></code-binding>
+        <code-binding key="style" type="select" options="wavy,dotted" value="wavy"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const code = element.shadowRoot?.querySelector('code')?.textContent;
+      expect(code).toContain('enabled content');
+      expect(code).toContain('wavy content');
+    });
+  });
+
+  describe('part="editable" attribute', () => {
+    it('should add part="editable" to boolean controls', async () => {
+      element.innerHTML = `
+        <textarea>\${enabled}</textarea>
+        <code-binding key="enabled" type="boolean" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const control = element.shadowRoot?.querySelector('.inline-boolean');
+      expect(control?.getAttribute('part')).toBe('editable');
+    });
+
+    it('should add part="editable" to number controls', async () => {
+      element.innerHTML = `
+        <textarea>\${count}</textarea>
+        <code-binding key="count" type="number" value="5"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const control = element.shadowRoot?.querySelector('.inline-number');
+      expect(control?.getAttribute('part')).toBe('editable');
+    });
+
+    it('should add part="editable" to string controls', async () => {
+      element.innerHTML = `
+        <textarea>\${name}</textarea>
+        <code-binding key="name" type="string" value="test"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const control = element.shadowRoot?.querySelector('.inline-string');
+      expect(control?.getAttribute('part')).toBe('editable');
+    });
+
+    it('should add part="editable" to line toggle controls', async () => {
+      element.setAttribute('language', 'scss');
+      element.innerHTML = `
+        <textarea>\${toggle}color: red;</textarea>
+        <code-binding key="toggle" type="comment" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const toggle = element.shadowRoot?.querySelector('.line-toggle');
+      expect(toggle?.getAttribute('part')).toBe('editable');
+    });
+
+    it('should add part="editable" to block toggle controls', async () => {
+      element.setAttribute('language', 'typescript');
+      element.innerHTML = `
+        <textarea>\${block}const x = 1;\${/block}</textarea>
+        <code-binding key="block" type="comment" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const toggle = element.shadowRoot?.querySelector('.block-toggle');
+      expect(toggle?.getAttribute('part')).toBe('editable');
+    });
+  });
+
+  describe('editable zone CSS custom properties', () => {
+    it('should use --code-editable-text-decoration in CSS', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain('var(--code-editable-text-decoration,');
+    });
+
+    it('should use --code-editable-border-radius in CSS', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain('var(--code-editable-border-radius,');
+    });
+
+    it('should use --code-editable-border in CSS', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain('var(--code-editable-border,');
+    });
+
+    it('should use --code-editable-padding in CSS', () => {
+      document.body.appendChild(element);
+      const style = element.shadowRoot?.querySelector('style');
+      expect(style?.textContent).toContain('var(--code-editable-padding,');
+    });
+  });
 });

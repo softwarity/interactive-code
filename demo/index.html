@@ -494,7 +494,7 @@
         <h2>Theme & Color Scheme</h2>
         <p>Click on highlighted values to change theme and color scheme. Changes apply globally to all "Seen by user" code blocks below.</p>
 
-        <interactive-code class="inline-code" language="html">
+        <interactive-code class="inline-code" language="html" show-copy>
           <textarea>${useTheme}<link rel="stylesheet" href="https://unpkg.com/@softwarity/interactive-code/themes/${theme}.css"></textarea>
           <code-binding key="useTheme" type="comment" value="true"
             onchange="loadThemeCSS(e.detail ? this.closest('interactive-code').querySelector('[key=theme]').value : '')"></code-binding>
@@ -502,12 +502,47 @@
             onchange="var c=this.closest('interactive-code').querySelector('[key=useTheme]'); if(String(c.value)!=='false') loadThemeCSS(e.detail)"></code-binding>
         </interactive-code>
 
-        <interactive-code class="inline-code" language="scss">
+        <interactive-code class="inline-code" language="scss" show-copy>
           <textarea>html {
   color-scheme: ${colorScheme};
 }</textarea>
           <code-binding key="colorScheme" type="select" options="dark,light" value="dark"
             onchange="document.documentElement.classList.toggle('dark', e.detail === 'dark'); document.querySelectorAll('.user-view interactive-code').forEach(function(el) { el.setAttribute('color-scheme', e.detail) })"></code-binding>
+        </interactive-code>
+      </section>
+
+      <!-- Editable Zone Style -->
+      <section>
+        <h2>Editable Zone Style</h2>
+        <p>Customize how interactive zones look. Select a style to see the CSS and apply it to "Seen by user" blocks below.</p>
+
+        <interactive-code class="inline-code" language="scss" show-copy>
+          <textarea>/* Interactive zone style: ${editableStyle} */
+interactive-code {</textarea>
+          <textarea condition="editableStyle=wavy">  /* default — no custom property needed */</textarea>
+          <textarea condition="editableStyle=dotted">  --code-editable-text-decoration: underline dotted 1.5px;
+  --code-editable-text-underline-offset: 3px;</textarea>
+          <textarea condition="editableStyle=dashed">  --code-editable-text-decoration: underline dashed 1.5px;
+  --code-editable-text-underline-offset: 3px;</textarea>
+          <textarea condition="editableStyle=highlight">  --code-editable-text-decoration: none;
+  --code-editable-background: rgba(128,128,128,0.15);
+  --code-editable-border-radius: 3px;
+  --code-editable-padding: 1px 4px;</textarea>
+          <textarea condition="editableStyle=outline">  --code-editable-text-decoration: none;
+  --code-editable-outline: 1px dashed;
+  --code-editable-outline-offset: 2px;</textarea>
+          <textarea condition="editableStyle=pill">  --code-editable-text-decoration: none;
+  --code-editable-background: rgba(128,128,128,0.12);
+  --code-editable-border-radius: 12px;
+  --code-editable-padding: 1px 8px;</textarea>
+          <textarea condition="editableStyle=hand-drawn">  --code-editable-text-decoration: none;
+  --code-editable-border: 1.5px solid;
+  --code-editable-border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  --code-editable-padding: 2px 6px;</textarea>
+          <textarea condition="editableStyle=none">  --code-editable-text-decoration: none;</textarea>
+          <textarea>}</textarea>
+          <code-binding key="editableStyle" type="select" options="wavy,dotted,dashed,highlight,outline,pill,hand-drawn,none" value="wavy"
+            onchange="applyEditableStyle(e.detail)"></code-binding>
         </interactive-code>
       </section>
 
@@ -1302,6 +1337,61 @@ interactive-code {
 
     // Load initial theme (catppuccin)
     loadThemeCSS('catppuccin');
+
+    function applyEditableStyle(style) {
+      var els = document.querySelectorAll('.user-view interactive-code');
+      var props = [
+        '--code-editable-text-decoration',
+        '--code-editable-text-underline-offset',
+        '--code-editable-border-radius',
+        '--code-editable-border',
+        '--code-editable-outline',
+        '--code-editable-outline-offset',
+        '--code-editable-background',
+        '--code-editable-padding'
+      ];
+      els.forEach(function(el) {
+        props.forEach(function(p) { el.style.removeProperty(p); });
+        switch (style) {
+          case 'wavy':
+            break;
+          case 'dotted':
+            el.style.setProperty('--code-editable-text-decoration', 'underline dotted 1.5px');
+            el.style.setProperty('--code-editable-text-underline-offset', '3px');
+            break;
+          case 'dashed':
+            el.style.setProperty('--code-editable-text-decoration', 'underline dashed 1.5px');
+            el.style.setProperty('--code-editable-text-underline-offset', '3px');
+            break;
+          case 'highlight':
+            el.style.setProperty('--code-editable-text-decoration', 'none');
+            el.style.setProperty('--code-editable-background', 'rgba(128,128,128,0.15)');
+            el.style.setProperty('--code-editable-border-radius', '3px');
+            el.style.setProperty('--code-editable-padding', '1px 4px');
+            break;
+          case 'outline':
+            el.style.setProperty('--code-editable-text-decoration', 'none');
+            el.style.setProperty('--code-editable-outline', '1px dashed');
+            el.style.setProperty('--code-editable-outline-offset', '2px');
+            break;
+          case 'pill':
+            el.style.setProperty('--code-editable-text-decoration', 'none');
+            el.style.setProperty('--code-editable-background', 'rgba(128,128,128,0.12)');
+            el.style.setProperty('--code-editable-border-radius', '12px');
+            el.style.setProperty('--code-editable-padding', '1px 8px');
+            break;
+          case 'hand-drawn':
+            el.style.setProperty('--code-editable-text-decoration', 'none');
+            el.style.setProperty('--code-editable-border', '1.5px solid');
+            el.style.setProperty('--code-editable-border-radius', '255px 15px 225px 15px / 15px 225px 15px 255px');
+            el.style.setProperty('--code-editable-padding', '2px 6px');
+            break;
+          case 'none':
+            el.style.setProperty('--code-editable-text-decoration', 'none');
+            break;
+        }
+      });
+    }
   </script>
 </body>
 </html>
