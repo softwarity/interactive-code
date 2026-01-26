@@ -42,6 +42,7 @@ export class CodeBindingElement extends HTMLElement {
     const v = this.getAttribute('options');
     return v ? v.split(',').map(s => s.trim()) : [];
   }
+  get carousel(): boolean { return this.hasAttribute('carousel'); }
 
   get value(): any { return this._value; }
   set value(v: any) {
@@ -131,6 +132,19 @@ export class CodeBindingElement extends HTMLElement {
         const currentIndex = opts.indexOf(this._value);
         const nextIndex = (currentIndex + 1) % opts.length;
         this.value = opts[nextIndex];
+      }
+    }
+  }
+
+  /** Cycle to previous option (for select carousel) */
+  previous() {
+    if (this._disabled) return;
+    if (this.type === 'select') {
+      const opts = this.options;
+      if (opts.length > 0) {
+        const currentIndex = opts.indexOf(this._value);
+        const prevIndex = (currentIndex - 1 + opts.length) % opts.length;
+        this.value = opts[prevIndex];
       }
     }
   }

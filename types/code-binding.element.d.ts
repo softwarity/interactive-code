@@ -26,6 +26,7 @@ export declare class CodeBindingElement extends HTMLElement {
     get max(): number | undefined;
     get step(): number | undefined;
     get options(): string[];
+    get carousel(): boolean;
     get value(): any;
     set value(v: any);
     get disabled(): boolean;
@@ -36,6 +37,8 @@ export declare class CodeBindingElement extends HTMLElement {
     private emitChange;
     /** Toggle boolean/comment/attribute value or cycle through select options */
     toggle(): void;
+    /** Cycle to previous option (for select carousel) */
+    previous(): void;
     /** Increment number value */
     increment(): void;
     /** Decrement number value */

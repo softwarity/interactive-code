@@ -541,7 +541,7 @@ interactive-code {</textarea>
   --code-editable-padding: 2px 6px;</textarea>
           <textarea condition="editableStyle=none">  --code-editable-text-decoration: none;</textarea>
           <textarea>}</textarea>
-          <code-binding key="editableStyle" type="select" options="wavy,dotted,dashed,highlight,outline,pill,hand-drawn,none" value="wavy"
+          <code-binding key="editableStyle" type="select" carousel options="wavy,dotted,dashed,highlight,outline,pill,hand-drawn,none" value="wavy"
             onchange="applyEditableStyle(e.detail)"></code-binding>
         </interactive-code>
       </section>
@@ -666,14 +666,14 @@ interactive-code {</textarea>
 
         <!-- Select Type -->
         <article class="doc-section">
-          <h3>Select Type</h3>
-          <p>2 options = toggle, 3+ options = dropdown:</p>
+          <h3>Select Type — Dropdown or Carousel</h3>
+          <p>2 options = toggle click, 3+ options = dropdown. Add <code>carousel</code> attribute to cycle through options on click instead:</p>
 
           <div class="code-header"><span>Written by developer</span></div>
           <interactive-code class="inline-code" language="html" show-copy>
             <textarea><interactive-code language="scss" ${show-line-numbers} ${show-copy}>
   <textarea>.alert { background: '${color}'; }&lt;/textarea>
-  <code-binding key="color" type="select" options="crimson,forestgreen,royalblue,orange" value="crimson"
+  <code-binding key="color" type="select" ${carousel} options="crimson,forestgreen,royalblue,orange" value="crimson"
     onchange="document.getElementById('preview-alert').style.background = e.detail"></code-binding>
 </interactive-code>
 
@@ -682,6 +682,8 @@ interactive-code {</textarea>
               onchange="var el=this.closest('.doc-section').querySelector('.user-view interactive-code'); e.detail ? el.setAttribute('show-line-numbers','') : el.removeAttribute('show-line-numbers')"></code-binding>
             <code-binding key="show-copy" type="attribute" value="false"
               onchange="var el=this.closest('.doc-section').querySelector('.user-view interactive-code'); e.detail ? el.setAttribute('show-copy','') : el.removeAttribute('show-copy')"></code-binding>
+            <code-binding key="carousel" type="attribute" value="false"
+              onchange="var cb=this.closest('.doc-section').querySelector('.user-view code-binding[key=color]'); e.detail ? cb.setAttribute('carousel','') : cb.removeAttribute('carousel'); cb.dispatchEvent(new CustomEvent('change', {detail: cb.value, bubbles: true, composed: true}))"></code-binding>
           </interactive-code>
 
           <div class="preview-wrapper">
@@ -1215,6 +1217,12 @@ interactive-code {
                   <td>—</td>
                   <td>Comma-separated options (for <code>select</code> type)</td>
                 </tr>
+                <tr>
+                  <td><code>carousel</code></td>
+                  <td><code>boolean</code></td>
+                  <td><code>false</code></td>
+                  <td>Cycle through options on click instead of dropdown (for <code>select</code> type)</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -1271,7 +1279,7 @@ interactive-code {
                 <tr>
                   <td><code>select</code></td>
                   <td>Option from list</td>
-                  <td>Click toggle (2 options) or dropdown (3+)</td>
+                  <td>Click toggle (2 options), dropdown (3+), or carousel (<code>carousel</code> attribute)</td>
                 </tr>
                 <tr>
                   <td><code>color</code></td>

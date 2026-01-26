@@ -493,6 +493,12 @@ export class InteractiveCodeElement extends HTMLElement {
     } else if (event.key === 'ArrowDown' && binding.type === 'number') {
       event.preventDefault();
       binding.decrement();
+    } else if (event.key === 'ArrowUp' && binding.type === 'select' && binding.carousel) {
+      event.preventDefault();
+      binding.toggle();
+    } else if (event.key === 'ArrowDown' && binding.type === 'select' && binding.carousel) {
+      event.preventDefault();
+      binding.previous();
     }
   }
 
@@ -797,6 +803,11 @@ export class InteractiveCodeElement extends HTMLElement {
 
       case 'select': {
         const options = binding.options;
+        // Carousel mode: click to cycle through all options
+        if (binding.carousel) {
+          return `<span class="inline-control inline-select-carousel${disabledClass}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Cycle ${escKey}: ${escValue}">` +
+            `<span class="token-string">${escValue}</span></span>`;
+        }
         // For 2 options, render as toggle (like boolean)
         if (options.length === 2) {
           return `<span class="inline-control inline-select-toggle${disabledClass}" part="editable" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle ${escKey}: ${escValue}">` +
@@ -1127,7 +1138,8 @@ export class InteractiveCodeElement extends HTMLElement {
       .inline-boolean,
       .inline-number,
       .inline-string,
-      .inline-select-toggle {
+      .inline-select-toggle,
+      .inline-select-carousel {
         padding: var(--code-editable-padding, 0 4px);
         position: relative;
       }

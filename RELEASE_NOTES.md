@@ -10,6 +10,7 @@
 - **CSS custom properties**: All 18 token colors and 10 UI colors exposed as `--token-*` and `--code-*` variables for external customization.
 - **Editable zone styling**: Interactive controls expose `part="editable"` and 8 CSS custom properties (`--code-editable-text-decoration`, `--code-editable-border-radius`, `--code-editable-border`, `--code-editable-outline`, `--code-editable-background`, `--code-editable-padding`, etc.) for full decoration customization. Built-in styles: wavy (default), dotted, dashed, highlight, outline, pill, hand-drawn, none.
 - **Condition value matching**: Conditional textareas now support `condition="key=value"` syntax to show content when a binding equals a specific value (in addition to existing truthy/falsy checks).
+- **Select carousel mode**: New `carousel` boolean attribute on `<code-binding type="select">` cycles through options on click instead of opening a dropdown. Supports keyboard navigation (ArrowUp/ArrowDown).
 
 ### Bug Fixes
 
@@ -34,8 +35,8 @@
 
 ### Tests
 
-- Added 40 new tests: cleanup (3), XSS (3), conditional inline (1), copy button (8), line numbers (5), accessibility (6), condition value matching (5), part="editable" (5), editable zone CSS (4)
-- Updated tests: theme system (7), mixed content highlighting (7) — 164 tests total
+- Added 52 new tests: cleanup (3), XSS (3), conditional inline (1), copy button (8), line numbers (5), accessibility (6), condition value matching (5), part="editable" (5), editable zone CSS (4), carousel (6 rendering + 6 code-binding)
+- Updated tests: theme system (7), mixed content highlighting (7) — 177 tests total
 
 ---
 

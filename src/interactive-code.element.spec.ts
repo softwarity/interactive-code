@@ -1512,6 +1512,102 @@ describe('InteractiveCodeElement', () => {
     });
   });
 
+  describe('select carousel mode', () => {
+    it('should render select with carousel attribute as clickable span', async () => {
+      element.innerHTML = `
+        <textarea>\${color}</textarea>
+        <code-binding key="color" type="select" carousel options="red, green, blue" value="red"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const carousel = element.shadowRoot?.querySelector('.inline-select-carousel');
+      expect(carousel).not.toBeNull();
+      expect(carousel?.getAttribute('data-action')).toBe('toggle');
+      // Should NOT render a dropdown
+      const select = element.shadowRoot?.querySelector('select');
+      expect(select).toBeNull();
+    });
+
+    it('should display current value in carousel', async () => {
+      element.innerHTML = `
+        <textarea>\${color}</textarea>
+        <code-binding key="color" type="select" carousel options="red, green, blue" value="green"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const valueSpan = element.shadowRoot?.querySelector('.inline-select-carousel .token-string');
+      expect(valueSpan?.textContent).toBe('green');
+    });
+
+    it('should have role="button" and part="editable" on carousel', async () => {
+      element.innerHTML = `
+        <textarea>\${color}</textarea>
+        <code-binding key="color" type="select" carousel options="red, green, blue" value="red"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const carousel = element.shadowRoot?.querySelector('.inline-select-carousel');
+      expect(carousel?.getAttribute('role')).toBe('button');
+      expect(carousel?.getAttribute('part')).toBe('editable');
+    });
+
+    it('should cycle value on click via toggle action', async () => {
+      element.innerHTML = `
+        <textarea>\${color}</textarea>
+        <code-binding key="color" type="select" carousel options="red, green, blue" value="red"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const binding = element.querySelector('code-binding') as CodeBindingElement;
+      binding.toggle();
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(binding.value).toBe('green');
+      const valueSpan = element.shadowRoot?.querySelector('.inline-select-carousel .token-string');
+      expect(valueSpan?.textContent).toBe('green');
+    });
+
+    it('should also work with 2 options when carousel is set', async () => {
+      element.innerHTML = `
+        <textarea>\${mode}</textarea>
+        <code-binding key="mode" type="select" carousel options="on, off" value="on"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Should render as carousel, not as toggle
+      const carousel = element.shadowRoot?.querySelector('.inline-select-carousel');
+      expect(carousel).not.toBeNull();
+      const toggle = element.shadowRoot?.querySelector('.inline-select-toggle');
+      expect(toggle).toBeNull();
+    });
+
+    it('should render as dropdown when carousel is not set (3+ options)', async () => {
+      element.innerHTML = `
+        <textarea>\${color}</textarea>
+        <code-binding key="color" type="select" options="red, green, blue" value="red"></code-binding>
+      `;
+      document.body.appendChild(element);
+
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const select = element.shadowRoot?.querySelector('select');
+      expect(select).not.toBeNull();
+      const carousel = element.shadowRoot?.querySelector('.inline-select-carousel');
+      expect(carousel).toBeNull();
+    });
+  });
+
   describe('editable zone CSS custom properties', () => {
     it('should use --code-editable-text-decoration in CSS', () => {
       document.body.appendChild(element);

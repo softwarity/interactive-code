@@ -456,6 +456,67 @@ describe('CodeBindingElement', () => {
     });
   });
 
+  describe('carousel getter', () => {
+    it('should return false when carousel attribute is not set', () => {
+      expect(element.carousel).toBe(false);
+    });
+
+    it('should return true when carousel attribute is set', () => {
+      element.setAttribute('carousel', '');
+      expect(element.carousel).toBe(true);
+    });
+  });
+
+  describe('previous()', () => {
+    it('should cycle to previous option in select', () => {
+      element.setAttribute('type', 'select');
+      element.setAttribute('options', 'a, b, c');
+      element.setAttribute('value', 'b');
+      document.body.appendChild(element);
+
+      element.previous();
+      expect(element.value).toBe('a');
+
+      document.body.removeChild(element);
+    });
+
+    it('should wrap around to last option when at first', () => {
+      element.setAttribute('type', 'select');
+      element.setAttribute('options', 'a, b, c');
+      element.setAttribute('value', 'a');
+      document.body.appendChild(element);
+
+      element.previous();
+      expect(element.value).toBe('c');
+
+      document.body.removeChild(element);
+    });
+
+    it('should not cycle when disabled', () => {
+      element.setAttribute('type', 'select');
+      element.setAttribute('options', 'a, b, c');
+      element.setAttribute('value', 'b');
+      element.setAttribute('disabled', '');
+      document.body.appendChild(element);
+
+      element.previous();
+      expect(element.value).toBe('b');
+
+      document.body.removeChild(element);
+    });
+
+    it('should do nothing for non-select types', () => {
+      element.setAttribute('type', 'number');
+      element.setAttribute('value', '5');
+      document.body.appendChild(element);
+
+      element.previous();
+      expect(element.value).toBe(5);
+
+      document.body.removeChild(element);
+    });
+  });
+
   describe('change event', () => {
     it('should bubble', () => {
       element.setAttribute('type', 'number');
