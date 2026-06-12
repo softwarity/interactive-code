@@ -1,8 +1,21 @@
 name: Create Tag/Release
-run-name: ${{ github.actor }} run build on ${{ github.repository }}
+run-name: ${{ github.actor }} release ${{ inputs.bump }} on ${{ github.repository }}
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
 
 jobs:
   create-release:
@@ -13,25 +26,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_TOKEN }} # Necessary to trigger tag workflow
+          fetch-depth: 0 # Full history + tags, needed by release-flow to compute the version
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install
 
-      - name: Configure Git
-        run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email ""
+      - name: Run tests
+        run: npm test
+        env:
+          CI: true
+      - name: Build package
+        run: npm run build
 
-      - name: Bump version (patch)
+      - name: Check build output
         run: |
-          npm version patch
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          NEXT_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-          sed -i "s/^# Release Notes$/# Release Notes\n\n## $NEXT_VERSION\n\n---/" RELEASE_NOTES.md
-          git add RELEASE_NOTES.md
-          git commit --amend --no-edit
-          git push --all
-          git push --tags
+          if [ ! -f "dist/interactive-code.js" ]; then
+            echo "Build failed: dist/interactive-code.js not found"
+            exit 1
+          fi
+          echo "Build successful!"
+
+      - uses: softwarity/release-flow@v1
+        with:
+          bump: ${{ inputs.bump }} # the value picked in the dropdown

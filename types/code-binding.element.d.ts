@@ -1,4 +1,4 @@
-export type BindingType = 'boolean' | 'number' | 'string' | 'select' | 'color' | 'comment' | 'attribute' | 'readonly';
+export type BindingType = 'boolean' | 'number' | 'string' | 'select' | 'color' | 'comment' | 'attribute' | 'readonly' | 'button';
 /**
  * <code-binding> Web Component
  *
@@ -43,4 +43,16 @@ export declare class CodeBindingElement extends HTMLElement {
     increment(): void;
     /** Decrement number value */
     decrement(): void;
+    /**
+     * Trigger a button action.
+     * Unlike value setters, this emits `change` on every activation (no value comparison),
+     * since a button has no value to change — it just fires the action.
+     */
+    trigger(): void;
+    /**
+     * Set an initial value without emitting a `change` event.
+     * Used to synthesize a default label (e.g. `button0`) for `button` bindings
+     * that omit the `value` attribute.
+     */
+    setDefaultValue(v: any): void;
 }

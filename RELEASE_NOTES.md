@@ -1,6 +1,23 @@
 # Release Notes
 
-## 1.0.8
+## NEXT RELEASE
+
+### Features
+
+- **JSON language**: New `language="json"` with dedicated syntax highlighting (property keys vs string values, `true`/`false`/`null`, numbers, punctuation). JSONC `//` and `/* */` comments are displayed but stripped from copy/download so the exported content stays valid (RFC 8259).
+- **Collapsible sections**: New `collapsible` attribute on `<textarea>` folds a range of non-interactive lines (GitHub-diff style), with `collapsed` to start folded. The collapsed band shows the hidden line count (`▸ ⋯ N lines`); when expanded, a collapse chevron sits in the gutter/margin of the first and last line. Folding is purely visual — copy/download still export the full content. Keyboard accessible (`role="button"`, Enter/Space).
+- **Button binding type**: New `type="button"` renders a clickable action token that emits a `change` event on every click (`e.detail` = its `value`) with no re-render — ideal for a hub of actions. `value` is the label (a `button<index>` default is synthesized when omitted). Exposes a `trigger()` method.
+- **Download button**: New `show-download` attribute displays a download button (next to copy) that exports the full content as a file. The file name comes from the optional `download="name.ext"` attribute or defaults to `snippet.<ext>` based on the language; MIME type matches the language.
+- **Gutter rail**: A fixed-width left gutter is now reserved whenever the component has line numbers, collapsible sections, or comment toggles — so fold chevrons and comment toggles share a consistent rail. Comment and block-comment toggles moved into the gutter, which **preserves the code indentation** regardless of comment state (toggling a comment no longer shifts the code). Width is customizable via `--code-gutter-width`.
+
+### Improvements
+
+- **Comment toggles no longer shift code**: line/block comment indicators are rendered in the gutter (out of flow), so commenting/uncommenting keeps the code aligned. Copy/download output is unchanged.
+
+### Tests
+
+- Added `src/new-features.spec.ts` (13 tests): JSON highlighting, JSONC comment stripping on export, collapsible sections, button type, download, and gutter behavior.
+- Fixed a pre-existing XSS test whose assertion checked `innerHTML` serialization (which legitimately decodes `&lt;` inside attribute values); it now asserts no `<script>` element is injected.
 
 ---
 

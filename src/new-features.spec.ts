@@ -1,0 +1,261 @@
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { InteractiveCodeElement } from './interactive-code.element';
+import { CodeBindingElement } from './code-binding.element';
+
+beforeAll(() => {
+  if (!customElements.get('code-binding')) {
+    customElements.define('code-binding', CodeBindingElement);
+  }
+  if (!customElements.get('interactive-code')) {
+    customElements.define('interactive-code', InteractiveCodeElement);
+  }
+});
+
+// Wait for the connectedCallback fallback timeout (100ms) plus margin
+const settle = () => new Promise(resolve => setTimeout(resolve, 150));
+
+describe('New features', () => {
+  let element: InteractiveCodeElement;
+
+  beforeEach(() => {
+    element = document.createElement('interactive-code') as InteractiveCodeElement;
+  });
+
+  afterEach(() => {
+    element.parentNode?.removeChild(element);
+  });
+
+  describe('JSON language', () => {
+    it('highlights keys, string values, literals and numbers distinctly', async () => {
+      element.setAttribute('language', 'json');
+      element.innerHTML = `
+        <textarea>{
+  "name": "interactive-code",
+  "count": 3,
+  "enabled": true,
+  "extra": null
+}</textarea>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const code = element.shadowRoot!.querySelector('code')!;
+      // A quoted string followed by ":" is a property key
+      const keys = [...code.querySelectorAll('.token-property')].map(n => n.textContent);
+      expect(keys).toContain('"name"');
+      // A quoted string value (not a key)
+      const strings = [...code.querySelectorAll('.token-string')].map(n => n.textContent);
+      expect(strings).toContain('"interactive-code"');
+      // Literals true/null
+      const keywords = [...code.querySelectorAll('.token-keyword')].map(n => n.textContent);
+      expect(keywords).toEqual(expect.arrayContaining(['true', 'null']));
+      // Number
+      const numbers = [...code.querySelectorAll('.token-number')].map(n => n.textContent);
+      expect(numbers).toContain('3');
+    });
+
+    it('strips JSONC comments from the exported text but keeps them on display', async () => {
+      element.setAttribute('language', 'json');
+      element.innerHTML = `
+        <textarea>{
+  // this annotation must not be exported
+  "a": "\${a}"
+}</textarea>
+        <code-binding key="a" type="string" value="x"></code-binding>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const code = element.shadowRoot!.querySelector('code')!;
+      // Shown on display
+      expect(code.textContent).toContain('// this annotation must not be exported');
+
+      // Stripped from export
+      const exported = (element as any).getPlainText() as string;
+      expect(exported).not.toContain('//');
+      expect(exported).not.toContain('annotation');
+      expect(exported).toContain('"a": "x"');
+    });
+
+    it('uses snippet.json as the default download name and matches the override', () => {
+      element.setAttribute('language', 'json');
+      expect(element.downloadName).toBe('snippet.json');
+      element.setAttribute('download', 'config.json');
+      expect(element.downloadName).toBe('config.json');
+    });
+  });
+
+  describe('Collapsible sections', () => {
+    it('renders a collapsed fold group with the hidden line count, keeping lines in the DOM', async () => {
+      element.setAttribute('language', 'json');
+      element.innerHTML = `
+        <textarea>{
+  "id": "\${id}",</textarea>
+        <textarea collapsible collapsed>  "x": 1,
+  "y": 2,
+  "z": 3,</textarea>
+        <textarea>  "ok": \${ok}
+}</textarea>
+        <code-binding key="id" type="string" value="api"></code-binding>
+        <code-binding key="ok" type="boolean" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const shadow = element.shadowRoot!;
+      const group = shadow.querySelector('.fold-group')!;
+      expect(group).not.toBeNull();
+      expect(group.classList.contains('collapsed')).toBe(true);
+
+      // Band advertises the 3 hidden lines
+      const band = group.querySelector('.fold-band')!;
+      expect(band.textContent).toContain('3 lines');
+
+      // The 3 folded lines remain in the DOM (folding is visual only)
+      const linesInGroup = group.querySelectorAll('.code-line');
+      expect(linesInGroup.length).toBe(3);
+
+      // Gutter chevrons on first and last folded line (the band has its own chevron too)
+      expect(group.querySelectorAll('.code-line .fold-chevron-gutter').length).toBe(2);
+      expect(band.querySelector('.fold-chevron-gutter')).not.toBeNull();
+
+      // Export contains the full content, including folded lines
+      const exported = (element as any).getPlainText() as string;
+      expect(exported).toContain('"x": 1');
+      expect(exported).toContain('"z": 3');
+      expect(exported).toContain('"ok": true');
+    });
+
+    it('toggles the collapsed state when the band is clicked (no re-render)', async () => {
+      element.setAttribute('language', 'json');
+      element.innerHTML = `
+        <textarea>{</textarea>
+        <textarea collapsible collapsed>  "a": 1,</textarea>
+        <textarea>}</textarea>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const shadow = element.shadowRoot!;
+      const group = shadow.querySelector('.fold-group')!;
+      const updateSpy = vi.spyOn(element as any, 'updateCode');
+
+      const band = group.querySelector('.fold-band') as HTMLElement;
+      band.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+
+      expect(group.classList.contains('collapsed')).toBe(false);
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Button binding type', () => {
+    it('renders the value as the action label', async () => {
+      element.setAttribute('language', 'typescript');
+      element.innerHTML = `
+        <textarea>provider.\${refresh}();</textarea>
+        <code-binding key="refresh" type="button" value="refresh()"></code-binding>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const button = element.shadowRoot!.querySelector('.inline-button')!;
+      expect(button).not.toBeNull();
+      expect(button.textContent).toBe('refresh()');
+      expect(button.getAttribute('data-action')).toBe('trigger');
+    });
+
+    it('synthesizes a button<index> label when value is omitted', async () => {
+      element.setAttribute('language', 'typescript');
+      element.innerHTML = `
+        <textarea>\${a} \${b}</textarea>
+        <code-binding key="a" type="button"></code-binding>
+        <code-binding key="b" type="button"></code-binding>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const labels = [...element.shadowRoot!.querySelectorAll('.inline-button')].map(n => n.textContent);
+      expect(labels).toEqual(['button0', 'button1']);
+    });
+
+    it('emits change with detail = value on every click, without re-render', async () => {
+      element.setAttribute('language', 'typescript');
+      element.innerHTML = `
+        <textarea>\${save}</textarea>
+        <code-binding key="save" type="button" value="save()"></code-binding>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const binding = element.querySelector('code-binding') as CodeBindingElement;
+      const details: any[] = [];
+      binding.addEventListener('change', (e: any) => details.push(e.detail));
+
+      const updateSpy = vi.spyOn(element as any, 'updateCode');
+      const button = element.shadowRoot!.querySelector('.inline-button') as HTMLElement;
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+
+      expect(details).toEqual(['save()', 'save()']);
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Download button', () => {
+    it('exposes showDownload and the download button is present', async () => {
+      element.setAttribute('language', 'json');
+      element.setAttribute('show-download', '');
+      element.innerHTML = `<textarea>{}</textarea>`;
+      document.body.appendChild(element);
+      await settle();
+
+      expect(element.showDownload).toBe(true);
+      expect(element.shadowRoot!.querySelector('.download-button')).not.toBeNull();
+    });
+  });
+
+  describe('Gutter rail', () => {
+    const hasGutter = (el: InteractiveCodeElement) =>
+      el.shadowRoot!.querySelector('code')!.classList.contains('has-gutter');
+
+    it('reserves the gutter when line numbers are shown', async () => {
+      element.setAttribute('show-line-numbers', '');
+      element.innerHTML = `<textarea>a\nb</textarea>`;
+      document.body.appendChild(element);
+      await settle();
+      expect(hasGutter(element)).toBe(true);
+    });
+
+    it('reserves the gutter when a comment toggle exists, even without line numbers', async () => {
+      element.setAttribute('language', 'scss');
+      element.innerHTML = `
+        <textarea>\${c}color: red;</textarea>
+        <code-binding key="c" type="comment" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+      await settle();
+      expect(element.showLineNumbers).toBe(false);
+      expect(hasGutter(element)).toBe(true);
+    });
+
+    it('reserves the gutter when a collapsible section exists', async () => {
+      element.setAttribute('language', 'json');
+      element.innerHTML = `
+        <textarea>{</textarea>
+        <textarea collapsible>  "a": 1</textarea>
+        <textarea>}</textarea>
+      `;
+      document.body.appendChild(element);
+      await settle();
+      expect(hasGutter(element)).toBe(true);
+    });
+
+    it('does not reserve the gutter for a plain block (no numbers, folds or comments)', async () => {
+      element.setAttribute('language', 'typescript');
+      element.innerHTML = `<textarea>const x = 1;</textarea>`;
+      document.body.appendChild(element);
+      await settle();
+      expect(hasGutter(element)).toBe(false);
+    });
+  });
+});

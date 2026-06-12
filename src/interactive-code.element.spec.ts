@@ -889,9 +889,12 @@ describe('InteractiveCodeElement', () => {
       await new Promise(resolve => setTimeout(resolve, 150));
 
       const code = element.shadowRoot?.querySelector('code');
-      // Should not contain unescaped script tag
-      expect(code?.innerHTML).not.toContain('<script>');
-      // Should contain escaped version
+      // No executable <script> element must be injected into the rendered DOM.
+      // (Checking innerHTML for the "<script>" substring is unreliable: a *value*
+      // attribute legitimately serializes "&lt;" back to "<" per the HTML spec,
+      // even though the value is inert. Asserting on the actual DOM is the real check.)
+      expect(code?.querySelector('script')).toBeNull();
+      // The displayed value text is escaped
       expect(code?.innerHTML).toContain('&lt;script&gt;');
     });
 

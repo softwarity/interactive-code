@@ -1,6 +1,6 @@
 import { CodeBindingElement } from './code-binding.element';
 
-type Language = 'html' | 'scss' | 'typescript' | 'shell';
+type Language = 'html' | 'scss' | 'typescript' | 'shell' | 'json';
 
 /**
  * <interactive-code> Web Component
@@ -33,6 +33,8 @@ type Language = 'html' | 'scss' | 'typescript' | 'shell';
 interface ConditionalContent {
   content: string;
   condition: string | null; // null means always show
+  collapsible: boolean;     // whether this section can be folded
+  collapsed: boolean;       // initial folded state (only meaningful when collapsible)
 }
 
 interface CommentStyle {
@@ -55,6 +57,7 @@ export class InteractiveCodeElement extends HTMLElement {
   private _code: string | null = null;
   private _initialized = false;
   private _internalChange = false;
+  private _gutterActive = false;
 
   // References for cleanup
   private _observer: MutationObserver | null = null;
@@ -97,6 +100,40 @@ export class InteractiveCodeElement extends HTMLElement {
   /** Whether to show the copy button */
   get showCopy(): boolean {
     return this.hasAttribute('show-copy');
+  }
+
+  /** Whether to show the download button */
+  get showDownload(): boolean {
+    return this.hasAttribute('show-download');
+  }
+
+  /** File name used by the download button (defaults to snippet.<ext>) */
+  get downloadName(): string {
+    return this.getAttribute('download') || `snippet.${this.fileExtension}`;
+  }
+
+  /** File extension matching the current language */
+  private get fileExtension(): string {
+    switch (this.language) {
+      case 'json': return 'json';
+      case 'typescript': return 'ts';
+      case 'scss': return 'scss';
+      case 'shell': return 'sh';
+      case 'html':
+      default: return 'html';
+    }
+  }
+
+  /** MIME type matching the current language */
+  private get mimeType(): string {
+    switch (this.language) {
+      case 'json': return 'application/json';
+      case 'typescript': return 'text/typescript';
+      case 'scss': return 'text/x-scss';
+      case 'shell': return 'text/x-shellscript';
+      case 'html':
+      default: return 'text/html';
+    }
   }
 
   /** Color scheme (light or dark mode) */
@@ -193,7 +230,7 @@ export class InteractiveCodeElement extends HTMLElement {
   private render() {
     this.shadow.innerHTML = `
       <style>${this.getStyles()}</style>
-      <pre class="code-block"><button class="copy-button" aria-label="Copy code to clipboard" tabindex="0"><svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button><code></code></pre>
+      <pre class="code-block"><div class="code-actions"><button class="action-button download-button" aria-label="Download code" tabindex="0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="action-button copy-button" aria-label="Copy code to clipboard" tabindex="0"><svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button></div><code></code></pre>
     `;
     this.codeContainer = this.shadow.querySelector('code')!;
   }
@@ -215,7 +252,9 @@ export class InteractiveCodeElement extends HTMLElement {
           .replace(/\n\s*$/, '') // Remove trailing whitespace
           || '';
         const condition = textarea.getAttribute('condition');
-        this.conditionalContents.push({ content, condition });
+        const collapsible = textarea.hasAttribute('collapsible');
+        const collapsed = textarea.hasAttribute('collapsed');
+        this.conditionalContents.push({ content, condition, collapsible, collapsed });
       });
 
       // For backwards compatibility, also set templateContent from first unconditional or all
@@ -229,7 +268,7 @@ export class InteractiveCodeElement extends HTMLElement {
       this.templateContent = template.innerHTML
         .replace(/^\n/, '')
         .replace(/\n\s*$/, '');
-      this.conditionalContents = [{ content: this.templateContent, condition: null }];
+      this.conditionalContents = [{ content: this.templateContent, condition: null, collapsible: false, collapsed: false }];
     }
   }
 
@@ -237,11 +276,16 @@ export class InteractiveCodeElement extends HTMLElement {
     // Evaluate conditions and concatenate matching content
     const parts: string[] = [];
 
-    for (const { content, condition } of this.conditionalContents) {
-      if (this.evaluateCondition(condition)) {
-        parts.push(content);
+    this.conditionalContents.forEach((cc, index) => {
+      if (!this.evaluateCondition(cc.condition)) return;
+      if (cc.collapsible) {
+        // Wrap collapsible sections with fold markers (rendered as a foldable group).
+        // The index is used as a stable fold id across re-renders.
+        parts.push(`__FOLD_START_${index}_${cc.collapsed ? 1 : 0}__\n${cc.content}\n__FOLD_END_${index}__`);
+      } else {
+        parts.push(cc.content);
       }
-    }
+    });
 
     // Join with separator marker if show-separators is enabled and multiple parts
     if (this.showSeparators && parts.length > 1) {
@@ -288,9 +332,15 @@ export class InteractiveCodeElement extends HTMLElement {
 
   private collectBindings() {
     const bindingElements = this.querySelectorAll('code-binding') as NodeListOf<CodeBindingElement>;
+    let buttonIndex = 0;
     bindingElements.forEach(el => {
       if (el.key) {
         this.bindings.set(el.key, el);
+      }
+      // Synthesize a default label/detail for value-less button bindings (button0, button1, ...)
+      if (el.type === 'button') {
+        el.setDefaultValue(`button${buttonIndex}`);
+        buttonIndex++;
       }
     });
   }
@@ -328,6 +378,9 @@ export class InteractiveCodeElement extends HTMLElement {
   private _handleChange(e: Event) {
     const target = e.target as CodeBindingElement;
     if (target.tagName === 'CODE-BINDING' && !this._internalChange) {
+      // Buttons fire fire-and-forget actions: nothing in the displayed code changes,
+      // so skip the re-render and keep the current fold/inline state intact.
+      if (target.type === 'button') return;
       this.updateCode();
     }
   }
@@ -348,6 +401,19 @@ export class InteractiveCodeElement extends HTMLElement {
     // Handle copy button
     if (target.closest('.copy-button')) {
       this.copyToClipboard();
+      return;
+    }
+
+    // Handle download button
+    if (target.closest('.download-button')) {
+      this.downloadFile();
+      return;
+    }
+
+    // Handle fold band / gutter chevrons (toggle collapsed state, no re-render)
+    const foldToggle = target.closest('[data-fold-toggle]') as HTMLElement;
+    if (foldToggle) {
+      this.toggleFold(foldToggle.dataset['foldToggle']);
       return;
     }
 
@@ -491,6 +557,14 @@ export class InteractiveCodeElement extends HTMLElement {
       return;
     }
 
+    // Handle fold band / gutter chevrons (Enter/Space). Native <button> handles its own keys.
+    const foldToggle = target.closest('[data-fold-toggle]') as HTMLElement;
+    if (foldToggle && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      this.toggleFold(foldToggle.dataset['foldToggle']);
+      return;
+    }
+
     const interactive = target.closest('[data-binding]') as HTMLElement;
     if (!interactive) return;
 
@@ -550,6 +624,9 @@ export class InteractiveCodeElement extends HTMLElement {
         const selectInput = this.shadow.querySelector(`#sel-${binding.key}`) as HTMLSelectElement;
         if (selectInput) selectInput.focus();
         break;
+      case 'trigger':
+        binding.trigger();
+        break;
     }
   }
 
@@ -558,8 +635,20 @@ export class InteractiveCodeElement extends HTMLElement {
     if (this.conditionalContents.length > 0) {
       this.updateTemplateContent();
     }
+    // The left gutter rail is reserved when there are line numbers, collapsible
+    // sections, or comment toggles. The control column (fold chevrons + comment
+    // toggles, before the numbers) only exists for folds/comments.
+    const hasNumbers = this.showLineNumbers;
+    const hasControls = this.conditionalContents.some(cc => cc.collapsible)
+      || Array.from(this.bindings.values()).some(b => b.type === 'comment');
+    this._gutterActive = hasNumbers || hasControls;
     const html = this.renderTemplate();
     this.codeContainer.innerHTML = html;
+    const cl = this.codeContainer.classList;
+    cl.toggle('has-gutter', this._gutterActive);
+    cl.toggle('has-controls', hasControls);
+    cl.toggle('has-numbers', hasNumbers);
+    cl.toggle('lang-html', this.language === 'html');
   }
 
   private getCommentStyle(language: Language): CommentStyle {
@@ -571,6 +660,7 @@ export class InteractiveCodeElement extends HTMLElement {
         return { line: '# ', lineIndicator: '#', blockStart: '# ', blockIndicator: '#', blockEnd: '', blockEndIndicator: '' };
       case 'typescript':
       case 'scss':
+      case 'json': // JSONC-style comments (stripped from copy/download to keep valid JSON)
       default:
         return { line: '// ', lineIndicator: '//', blockStart: '/* ', blockIndicator: '/*', blockEnd: ' */', blockEndIndicator: '*/' };
     }
@@ -616,10 +706,31 @@ export class InteractiveCodeElement extends HTMLElement {
     // Track mixed content zones for HTML language
     let currentZone: Language = this.language;
 
+    // Buffer used to collect the lines of a collapsible section before wrapping them
+    let foldBuffer: string[] | null = null;
+    let foldId = '';
+    let foldCollapsed = false;
+
     for (const line of lines) {
+      // Fold section markers (inserted by updateTemplateContent for collapsible textareas)
+      const foldStart = line.match(/^__FOLD_START_(\d+)_(\d)__$/);
+      if (foldStart) {
+        foldId = foldStart[1];
+        foldCollapsed = foldStart[2] === '1';
+        foldBuffer = [];
+        continue;
+      }
+      const foldEnd = line.match(/^__FOLD_END_(\d+)__$/);
+      if (foldEnd && foldBuffer) {
+        renderedLines.push(this.buildFoldGroup(foldId, foldCollapsed, foldBuffer));
+        foldBuffer = null;
+        continue;
+      }
+
       // Handle section separator
       if (line === '__SECTION_SEPARATOR__') {
-        renderedLines.push('<span class="section-separator"></span>');
+        const sep = '<span class="section-separator"></span>';
+        (foldBuffer ?? renderedLines).push(sep);
         continue;
       }
 
@@ -650,11 +761,39 @@ export class InteractiveCodeElement extends HTMLElement {
         }
       }
 
-      renderedLines.push(this.renderLine(line, commentStyle, blockCommentKeys, openBlockComments, this.showLineNumbers ? lineNumber : 0, effectiveLanguage));
+      const lineHtml = this.renderLine(line, commentStyle, blockCommentKeys, openBlockComments, this.showLineNumbers ? lineNumber : 0, effectiveLanguage);
+      (foldBuffer ?? renderedLines).push(lineHtml);
       lineNumber++;
     }
 
+    // Flush an unterminated fold buffer (defensive: malformed markers)
+    if (foldBuffer) {
+      renderedLines.push(this.buildFoldGroup(foldId, foldCollapsed, foldBuffer));
+    }
+
     return renderedLines.join('');
+  }
+
+  /** Build a collapsible group: a clickable band (shown when collapsed) wrapping the section lines */
+  private buildFoldGroup(id: string, collapsed: boolean, lines: string[]): string {
+    const count = lines.length;
+    const decorated = [...lines];
+    // Add a collapse chevron in the gutter of the first and last line of the block
+    if (decorated.length > 0) {
+      decorated[0] = this.injectFoldChevron(decorated[0], id, 'top');
+      decorated[decorated.length - 1] = this.injectFoldChevron(decorated[decorated.length - 1], id, 'bottom');
+    }
+    const band = `<span class="fold-band" role="button" tabindex="0" data-fold-toggle="${id}" aria-label="Expand ${count} hidden lines">` +
+      `<span class="fold-chevron-gutter" aria-hidden="true">&#9656;</span>` +
+      `<span class="fold-band-text">&#8943; ${count} lines</span></span>`;
+    return `<span class="fold-group${collapsed ? ' collapsed' : ''}" data-fold="${id}">${band}${decorated.join('')}</span>`;
+  }
+
+  /** Insert a fold chevron into the gutter of a rendered line (absolute-positioned, no layout shift) */
+  private injectFoldChevron(lineHtml: string, id: string, position: 'top' | 'bottom'): string {
+    const glyph = position === 'top' ? '&#9662;' : '&#9652;'; // ▾ / ▴
+    const chevron = `<span class="fold-chevron-gutter" role="button" tabindex="0" data-fold-toggle="${id}" aria-label="Collapse section">${glyph}</span>`;
+    return lineHtml.replace(/^(<span class="code-line[^"]*">)/, `$1${chevron}`);
   }
 
   /** Render a single line of code with bindings, highlighting, and optional line number */
@@ -724,7 +863,9 @@ export class InteractiveCodeElement extends HTMLElement {
         const isEnabled = binding.value === true;
         const toggleClass = isEnabled ? 'block-toggle-inactive' : 'block-toggle-active';
         const toggleHtml = `<span class="block-toggle inline-control ${toggleClass}" part="interactive" data-binding="${key}" data-action="toggle" role="button" tabindex="0" aria-label="Toggle block comment ${key}">${commentStyle.blockIndicator}</span>`;
-        if (isEnabled) {
+        // The cosmetic space after "/* " is only useful when the toggle is inline;
+        // in gutter mode the toggle moves to the rail, so the space would shift the indent.
+        if (isEnabled || this._gutterActive) {
           markers.set(marker, toggleHtml);
         } else {
           markers.set(marker, toggleHtml + ' ');
@@ -863,6 +1004,12 @@ export class InteractiveCodeElement extends HTMLElement {
         return `<span class="inline-control inline-attribute${disabledClass}${isActive ? '' : ' attribute-disabled'}" part="interactive" data-binding="${escKey}" data-action="toggle" role="button" tabindex="${tabindex}" aria-label="Toggle attribute ${escKey}">${attrDisplay}</span>`;
       }
 
+      case 'button':
+        // Clickable action token — fires `change` on click (no value to edit).
+        // `value` is the label (synthesized as `button<index>` when omitted).
+        return `<span class="inline-control inline-button${disabledClass}" part="interactive" data-binding="${escKey}" data-action="trigger" role="button" tabindex="${tabindex}" aria-label="Run ${escKey}">` +
+          `<span class="token-function">${escValue}</span></span>`;
+
       case 'readonly':
         return `<span class="token-value">${escValue}</span>`;
 
@@ -871,18 +1018,53 @@ export class InteractiveCodeElement extends HTMLElement {
     }
   }
 
-  /** Extract plain text from the rendered code, excluding line numbers */
+  /**
+   * Extract plain text from the rendered code for copy/download.
+   * Collapsed (folded) lines are still included — folding is purely visual, the export is complete.
+   * For JSON, comments are stripped so the exported content stays valid (RFC 8259).
+   */
   private getPlainText(): string {
+    const isJson = this.language === 'json';
     const lines: string[] = [];
-    const elements = this.codeContainer.children;
-    for (let i = 0; i < elements.length; i++) {
-      const el = elements[i] as HTMLElement;
-      if (el.classList.contains('section-separator')) continue;
+    // querySelectorAll keeps document order, including lines nested inside fold groups.
+    const lineEls = this.codeContainer.querySelectorAll('.code-line');
+    lineEls.forEach(el => {
+      // JSON: a commented-out line (line/block comment active) is dropped entirely.
+      if (isJson && el.classList.contains('line-disabled')) return;
+      const hadComment = isJson && el.querySelector('.token-comment, .line-toggle, .block-toggle, .block-end') !== null;
       const clone = el.cloneNode(true) as HTMLElement;
-      clone.querySelectorAll('.line-number').forEach(ln => ln.remove());
-      lines.push(clone.textContent || '');
-    }
+      clone.querySelectorAll('.line-number, .fold-chevron-gutter').forEach(n => n.remove());
+      // JSON: remove comment indicators/annotations from otherwise active lines.
+      if (isJson) {
+        clone.querySelectorAll('.line-toggle, .block-toggle, .block-end, .token-comment').forEach(n => n.remove());
+      }
+      const text = clone.textContent || '';
+      // JSON: skip lines that became empty after stripping a comment (e.g. a full-line annotation).
+      if (isJson && hadComment && text.trim() === '') return;
+      lines.push(text);
+    });
     return lines.join('\n');
+  }
+
+  /** Toggle the collapsed state of a fold group (CSS class only — no re-render) */
+  private toggleFold(id: string | undefined) {
+    if (!id) return;
+    const group = this.shadow.querySelector(`.fold-group[data-fold="${id}"]`);
+    group?.classList.toggle('collapsed');
+  }
+
+  /** Download the code content as a file (full content, valid JSON when language="json") */
+  private downloadFile() {
+    const text = this.getPlainText();
+    const blob = new Blob([text], { type: this.mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = this.downloadName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   /** Copy code content to clipboard with visual feedback */
@@ -916,6 +1098,8 @@ export class InteractiveCodeElement extends HTMLElement {
         return this.highlightTypeScript(text);
       case 'shell':
         return this.highlightShell(text);
+      case 'json':
+        return this.highlightJson(text);
     }
   }
 
@@ -1019,6 +1203,40 @@ export class InteractiveCodeElement extends HTMLElement {
     return result;
   }
 
+  private highlightJson(text: string): string {
+    const markers = new Map<string, string>();
+    let markerIndex = 0;
+
+    // Protect strings first (markers contain only word chars, so later regexes skip them).
+    // A string followed by a colon is a property key; otherwise it is a value.
+    let processed = text.replace(/"(?:[^"\\]|\\.)*"(?=\s*:)/g, (match) => {
+      const marker = `__JSONKEY_${markerIndex++}__`;
+      markers.set(marker, `<span class="token-property">${this.escapeHtml(match)}</span>`);
+      return marker;
+    });
+    processed = processed.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
+      const marker = `__JSONVAL_${markerIndex++}__`;
+      markers.set(marker, `<span class="token-string">${this.escapeHtml(match)}</span>`);
+      return marker;
+    });
+
+    let result = this.escapeHtml(processed);
+    // JSONC comments (display only — stripped from copy/download by getPlainText)
+    result = result.replace(/(\/\/.*)$/gm, '<span class="token-comment">$1</span>');
+    result = result.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="token-comment">$1</span>');
+    // Literals
+    result = result.replace(/\b(true|false|null)\b/g, '<span class="token-keyword">$1</span>');
+    // Numbers (including negatives, decimals, exponents)
+    result = result.replace(/-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g, '<span class="token-number">$&</span>');
+    // Punctuation
+    result = result.replace(/([{}\[\],:])/g, '<span class="token-punctuation">$1</span>');
+
+    for (const [marker, html] of markers) {
+      result = result.replace(marker, html);
+    }
+    return result;
+  }
+
   private getStyles(): string {
     return `
       /* Color-scheme: inherit from parent by default, attribute overrides */
@@ -1047,11 +1265,37 @@ export class InteractiveCodeElement extends HTMLElement {
 
       .code-block code {
         display: block;
+        /* Gutter rail = [control slot][number slot]. The control slot (fold chevrons +
+           comment toggles) widens for HTML to fit "<!--". Slots collapse to 0 when unused. */
+        --_ctrl-slot: 1.8em;
+        --_num-slot: 2.4em;
+        --_ctrl: 0em;
+        --_num: 0em;
+      }
+
+      .code-block code.lang-html {
+        --_ctrl-slot: 3.2em; /* room for the wider <!-- indicator */
+      }
+
+      .code-block code.has-controls {
+        --_ctrl: var(--code-gutter-width, var(--_ctrl-slot));
+      }
+
+      .code-block code.has-numbers {
+        --_num: var(--_num-slot);
       }
 
       .code-line {
         display: block;
         min-height: 1.5em;
+        position: relative;
+      }
+
+      /* When the component has line numbers, folds or comment toggles, every line reserves
+         a fixed-width left gutter: control column first, then numbers, then the code (which
+         keeps its natural indentation regardless of comment state). */
+      code.has-gutter .code-line {
+        padding-left: calc(var(--_ctrl) + var(--_num));
       }
 
       .section-separator {
@@ -1133,6 +1377,20 @@ export class InteractiveCodeElement extends HTMLElement {
         padding: var(--code-interactive-padding, 0 2px);
       }
 
+      /* In gutter mode, comment/block toggles move into the control column at the far left
+         of the rail (before the line numbers), out of flow so the code keeps its indentation.
+         They are gutter chrome, so external ::part(interactive) box decoration (padding/border)
+         is neutralized to keep their width predictable — an internal !important beats outer ::part. */
+      code.has-gutter .line-toggle,
+      code.has-gutter .block-toggle {
+        position: absolute;
+        left: 0.2em;
+        white-space: pre;
+        margin: 0 !important;
+        padding: 0 2px !important;
+        border: none !important;
+      }
+
       .block-end {
         margin-left: 4px;
         padding: 0 2px;
@@ -1165,7 +1423,8 @@ export class InteractiveCodeElement extends HTMLElement {
       .inline-number,
       .inline-string,
       .inline-select-toggle,
-      .inline-select-carousel {
+      .inline-select-carousel,
+      .inline-button {
         padding: var(--code-interactive-padding, 0 4px);
         position: relative;
       }
@@ -1258,11 +1517,17 @@ export class InteractiveCodeElement extends HTMLElement {
         vertical-align: middle;
       }
 
-      /* Copy button - hidden by default, shown with show-copy attribute */
-      .copy-button {
+      /* Action buttons (copy / download) - top-right corner, hidden by default */
+      .code-actions {
         position: absolute;
         top: 8px;
         right: 8px;
+        display: flex;
+        gap: 4px;
+        z-index: 10;
+      }
+
+      .action-button {
         background: transparent;
         border: 1px solid var(--code-copy-border, light-dark(rgba(0,0,0,0.15), rgba(255,255,255,0.2)));
         border-radius: 4px;
@@ -1273,7 +1538,6 @@ export class InteractiveCodeElement extends HTMLElement {
         align-items: center;
         justify-content: center;
         transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-        z-index: 10;
         line-height: 0;
       }
 
@@ -1281,13 +1545,17 @@ export class InteractiveCodeElement extends HTMLElement {
         display: flex;
       }
 
-      .copy-button:hover {
+      :host([show-download]) .download-button {
+        display: flex;
+      }
+
+      .action-button:hover {
         color: var(--code-text, light-dark(#000000, #a9b7c6));
         border-color: var(--code-copy-color, light-dark(rgba(0,0,0,0.4), rgba(255,255,255,0.5)));
         background: var(--code-hover-bg, light-dark(rgba(0,0,0,0.05), rgba(255,255,255,0.1)));
       }
 
-      .copy-button:focus-visible {
+      .action-button:focus-visible {
         outline: 2px solid var(--code-focus-outline, light-dark(#0065a9, #214283));
         outline-offset: 1px;
       }
@@ -1309,15 +1577,70 @@ export class InteractiveCodeElement extends HTMLElement {
         border-color: var(--code-copy-accent, light-dark(#20999d, #769aa5));
       }
 
-      /* Line numbers */
-      .line-number {
+      /* Collapsible sections (textarea[collapsible]) */
+      .fold-group {
+        display: block;
+      }
+
+      .fold-band {
+        display: none;
+        position: relative;
+        cursor: pointer;
+        user-select: none;
+        color: var(--code-line-number, light-dark(rgba(0,0,0,0.45), rgba(255,255,255,0.4)));
+        padding: 1px 4px 1px calc(var(--_ctrl) + var(--_num));
+        border-radius: var(--code-interactive-border-radius, 3px);
+      }
+
+      .fold-band:hover {
+        background: var(--code-hover-bg, light-dark(rgba(0,0,0,0.05), rgba(255,255,255,0.1)));
+        color: var(--code-text, light-dark(#000000, #a9b7c6));
+      }
+
+      .fold-band:focus-visible {
+        outline: 2px solid var(--code-focus-outline, light-dark(#0065a9, #214283));
+        outline-offset: 1px;
+      }
+
+      .fold-group.collapsed > .code-line {
+        display: none;
+      }
+
+      .fold-group.collapsed > .fold-band {
         display: inline-block;
-        min-width: 2em;
-        text-align: right;
+      }
+
+      /* Collapse chevrons sit at the far left of the gutter rail, without shifting line content */
+      .fold-chevron-gutter {
+        position: absolute;
+        left: 0.2em;
+        cursor: pointer;
+        user-select: none;
+        font-size: 11px;
+        color: var(--code-line-number, light-dark(rgba(0,0,0,0.4), rgba(255,255,255,0.35)));
+      }
+
+      .fold-chevron-gutter:hover {
+        color: var(--code-text, light-dark(#000000, #a9b7c6));
+      }
+
+      .fold-chevron-gutter:focus-visible {
+        outline: 2px solid var(--code-focus-outline, light-dark(#0065a9, #214283));
+        outline-offset: 1px;
+      }
+
+      /* Line numbers — absolutely positioned in the left part of the gutter rail */
+      .line-number {
         color: var(--code-line-number, light-dark(rgba(0,0,0,0.3), rgba(255,255,255,0.25)));
         user-select: none;
-        padding-right: 1em;
         font-variant-numeric: tabular-nums;
+      }
+
+      code.has-gutter .line-number {
+        position: absolute;
+        left: var(--_ctrl);
+        width: calc(var(--_num) - 0.6em);
+        text-align: right;
       }
     `;
   }

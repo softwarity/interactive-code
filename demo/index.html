@@ -489,7 +489,8 @@
       <!-- Description -->
       <p class="description">
         Web Component for displaying syntax-highlighted code with interactive bindings.
-        Supports HTML, SCSS, TypeScript, and Shell with click-to-edit values.
+        Supports HTML, SCSS, TypeScript, Shell, and JSON with click-to-edit values,
+        collapsible sections, and copy/download.
       </p>
 
       <!-- Theme & Color Scheme -->
@@ -991,6 +992,139 @@ console.log(result.groups);</textarea>
             </div>
           </div>
         </article>
+
+        <!-- JSON Type -->
+        <article class="doc-section">
+          <h3>JSON Type</h3>
+          <p>Use <code>language="json"</code> for syntax-highlighted, editable JSON. JSONC <code>//</code> comments are shown but stripped from copy/download so the exported file stays valid. Add <code>show-download</code> (and optionally <code>download="name.json"</code>) for large payloads:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html" show-copy>
+            <textarea><interactive-code language="json" ${show-line-numbers} ${show-copy} ${show-download}>
+  <textarea>{
+  // edited live — this comment is stripped on copy/download
+  "theme": "${theme}",
+  "fontSize": ${fontSize},
+  "notifications": ${notifications}
+}&lt;/textarea>
+  <code-binding key="theme" type="select" options="light,dark,auto" value="dark"></code-binding>
+  <code-binding key="fontSize" type="number" value="14" min="10" max="24"></code-binding>
+  <code-binding key="notifications" type="boolean" value="true"></code-binding>
+</interactive-code></textarea>
+            <code-binding key="show-line-numbers" type="attribute" value="true"
+              onchange="var el=this.closest('.doc-section').querySelector('.user-view interactive-code'); e.detail ? el.setAttribute('show-line-numbers','') : el.removeAttribute('show-line-numbers')"></code-binding>
+            <code-binding key="show-copy" type="attribute" value="true"
+              onchange="var el=this.closest('.doc-section').querySelector('.user-view interactive-code'); e.detail ? el.setAttribute('show-copy','') : el.removeAttribute('show-copy')"></code-binding>
+            <code-binding key="show-download" type="attribute" value="true"
+              onchange="var el=this.closest('.doc-section').querySelector('.user-view interactive-code'); e.detail ? el.setAttribute('show-download','') : el.removeAttribute('show-download')"></code-binding>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user (edit, then try copy / download)</div>
+            <div class="user-view">
+              <interactive-code language="json" show-line-numbers show-copy show-download download="settings.json">
+                <textarea>{
+  // edited live — this comment is stripped on copy/download
+  "theme": "${theme}",
+  "fontSize": ${fontSize},
+  "notifications": ${notifications}
+}</textarea>
+                <code-binding key="theme" type="select" options="light,dark,auto" value="dark"
+                  onchange="applyJsonSettings(this)"></code-binding>
+                <code-binding key="fontSize" type="number" value="14" min="10" max="24"
+                  onchange="applyJsonSettings(this)"></code-binding>
+                <code-binding key="notifications" type="boolean" value="true"
+                  onchange="applyJsonSettings(this)"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <div id="preview-json" class="preview-card" style="border-color: var(--accent-blue);">theme: dark &middot; 14px &middot; &#128276; on</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Collapsible Sections -->
+        <article class="doc-section">
+          <h3>Collapsible Sections</h3>
+          <p>Add <code>collapsible</code> on a <code>&lt;textarea&gt;</code> to fold a range of non-interactive lines (GitHub-diff style). Add <code>collapsed</code> to start folded. Folding is purely visual — copy/download still export the full content:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html" show-copy>
+            <textarea><interactive-code language="json" ${show-line-numbers} ${show-copy}>
+  <textarea>{
+  "id": "${id}",&lt;/textarea>
+  <textarea collapsible collapsed>  "_internal": {
+    "trace": true,
+    "verbose": false,
+    "buffer": 4096
+  },&lt;/textarea>
+  <textarea>  "enabled": ${enabled}
+}&lt;/textarea>
+  <code-binding key="id" type="string" value="api"></code-binding>
+  <code-binding key="enabled" type="boolean" value="true"></code-binding>
+</interactive-code></textarea>
+            <code-binding key="show-line-numbers" type="attribute" value="true"
+              onchange="var el=this.closest('.doc-section').querySelector('.user-view interactive-code'); e.detail ? el.setAttribute('show-line-numbers','') : el.removeAttribute('show-line-numbers')"></code-binding>
+            <code-binding key="show-copy" type="attribute" value="true"
+              onchange="var el=this.closest('.doc-section').querySelector('.user-view interactive-code'); e.detail ? el.setAttribute('show-copy','') : el.removeAttribute('show-copy')"></code-binding>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user (click the band to expand, copy to get the full JSON)</div>
+            <div class="user-view">
+              <interactive-code language="json" show-line-numbers show-copy>
+                <textarea>{
+  "id": "${id}",</textarea>
+                <textarea collapsible collapsed>  "_internal": {
+    "trace": true,
+    "verbose": false,
+    "buffer": 4096
+  },</textarea>
+                <textarea>  "enabled": ${enabled}
+}</textarea>
+                <code-binding key="id" type="string" value="api"
+                  onchange="updateFoldPreview(this)"></code-binding>
+                <code-binding key="enabled" type="boolean" value="true"
+                  onchange="updateFoldPreview(this)"></code-binding>
+              </interactive-code>
+              <div class="live-element">
+                <div id="preview-fold" class="preview-card" style="border-color: var(--accent-purple);">id: api &middot; enabled: true</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Button Type -->
+        <article class="doc-section">
+          <h3>Button Type</h3>
+          <p>A <code>button</code> binding is a clickable action token: it emits a <code>change</code> event on every click (<code>e.detail</code> = its <code>value</code>), with no re-render. Great for a hub of actions:</p>
+
+          <div class="code-header"><span>Written by developer</span></div>
+          <interactive-code class="inline-code" language="html" show-copy>
+            <textarea><interactive-code language="typescript">
+  <textarea>await provider.${load}();
+await provider.${save}();&lt;/textarea>
+  <code-binding key="load" type="button" value="load()"
+    onchange="alert(e.detail)"></code-binding>
+  <code-binding key="save" type="button" value="save()"
+    onchange="alert(e.detail)"></code-binding>
+</interactive-code></textarea>
+          </interactive-code>
+
+          <div class="preview-wrapper">
+            <div class="preview-label">Seen by user (click an action)</div>
+            <div class="user-view">
+              <interactive-code language="typescript">
+                <textarea>await provider.${load}();
+await provider.${save}();</textarea>
+                <code-binding key="load" type="button" value="load()"
+                  onchange="alert(e.detail)"></code-binding>
+                <code-binding key="save" type="button" value="save()"
+                  onchange="alert(e.detail)"></code-binding>
+              </interactive-code>
+            </div>
+          </div>
+        </article>
       </section>
 
       <!-- Documentation Section -->
@@ -1132,7 +1266,7 @@ interactive-code {
               <tbody>
                 <tr>
                   <td><code>language</code></td>
-                  <td><code>'html' | 'scss' | 'typescript' | 'shell'</code></td>
+                  <td><code>'html' | 'scss' | 'typescript' | 'shell' | 'json'</code></td>
                   <td><code>'html'</code></td>
                   <td>Syntax highlighting language</td>
                 </tr>
@@ -1153,6 +1287,18 @@ interactive-code {
                   <td><code>boolean</code></td>
                   <td><code>false</code></td>
                   <td>Show the copy-to-clipboard button</td>
+                </tr>
+                <tr>
+                  <td><code>show-download</code></td>
+                  <td><code>boolean</code></td>
+                  <td><code>false</code></td>
+                  <td>Show the download button (exports the full content as a file)</td>
+                </tr>
+                <tr>
+                  <td><code>download</code></td>
+                  <td><code>string</code></td>
+                  <td><code>snippet.&lt;ext&gt;</code></td>
+                  <td>File name used by the download button</td>
                 </tr>
                 <tr>
                   <td><code>color-scheme</code></td>
@@ -1190,6 +1336,8 @@ interactive-code {
           <ul class="feature-list">
             <li><code>condition="key"</code> - Show when binding value is truthy</li>
             <li><code>condition="!key"</code> - Show when binding value is falsy</li>
+            <li><code>collapsible</code> - Make the section foldable (band shows the hidden line count)</li>
+            <li><code>collapsed</code> - Start the section folded (requires <code>collapsible</code>)</li>
           </ul>
         </article>
 
@@ -1336,6 +1484,11 @@ interactive-code {
                   <td>Checkbox to comment/uncomment line</td>
                 </tr>
                 <tr>
+                  <td><code>button</code></td>
+                  <td>Action token (<code>value</code> = label)</td>
+                  <td>Click to fire a <code>change</code> event (<code>e.detail</code> = value)</td>
+                </tr>
+                <tr>
                   <td><code>readonly</code></td>
                   <td>Display only</td>
                   <td>No interaction</td>
@@ -1349,9 +1502,11 @@ interactive-code {
         <article class="doc-section">
           <h3>Features</h3>
           <ul class="feature-list">
-            <li><strong>Syntax Highlighting</strong> - HTML, SCSS, TypeScript, Shell</li>
+            <li><strong>Syntax Highlighting</strong> - HTML, SCSS, TypeScript, Shell, JSON</li>
             <li><strong>Interactive Bindings</strong> - Click to edit values directly in the code</li>
-            <li><strong>Multiple Types</strong> - boolean, number, string, select, color, attribute, comment</li>
+            <li><strong>Multiple Types</strong> - boolean, number, string, select, color, attribute, comment, button</li>
+            <li><strong>Collapsible Sections</strong> - Fold non-interactive ranges; copy/download stay complete</li>
+            <li><strong>Copy &amp; Download</strong> - <code>show-copy</code> / <code>show-download</code> buttons (valid JSON export)</li>
             <li><strong>Framework Agnostic</strong> - Works with Angular, React, Vue, or vanilla JS</li>
             <li><strong>Shadow DOM</strong> - Encapsulated styles</li>
             <li><strong>Zero Dependencies</strong> - Pure Web Components</li>
@@ -1384,6 +1539,24 @@ interactive-code {
 
     // Load initial theme (catppuccin)
     loadThemeCSS('catppuccin');
+
+    // JSON demo: reflect the edited settings into the live element
+    function applyJsonSettings(binding) {
+      var ic = binding.closest('interactive-code');
+      var theme = ic.querySelector('code-binding[key=theme]').value;
+      var fontSize = ic.querySelector('code-binding[key=fontSize]').value;
+      var notif = String(ic.querySelector('code-binding[key=notifications]').value) !== 'false';
+      document.getElementById('preview-json').textContent =
+        'theme: ' + theme + ' · ' + fontSize + 'px · ' + (notif ? '🔔 on' : '🔕 off');
+    }
+
+    // Collapsible demo: reflect id/enabled into the live element
+    function updateFoldPreview(binding) {
+      var ic = binding.closest('interactive-code');
+      var id = ic.querySelector('code-binding[key=id]').value;
+      var enabled = ic.querySelector('code-binding[key=enabled]').value;
+      document.getElementById('preview-fold').textContent = 'id: ' + id + ' · enabled: ' + enabled;
+    }
 
     // Apply initial interactive style (hand-drawn)
     applyInteractiveStyle('hand-drawn');

@@ -1,4 +1,4 @@
-export type BindingType = 'boolean' | 'number' | 'string' | 'select' | 'color' | 'comment' | 'attribute' | 'readonly';
+export type BindingType = 'boolean' | 'number' | 'string' | 'select' | 'color' | 'comment' | 'attribute' | 'readonly' | 'button';
 
 /**
  * <code-binding> Web Component
@@ -170,6 +170,29 @@ export class CodeBindingElement extends HTMLElement {
       let newValue = (this._value || 0) - step;
       if (min !== undefined && newValue < min) newValue = min;
       this.value = newValue;
+    }
+  }
+
+  /**
+   * Trigger a button action.
+   * Unlike value setters, this emits `change` on every activation (no value comparison),
+   * since a button has no value to change — it just fires the action.
+   */
+  trigger() {
+    if (this._disabled) return;
+    if (this.type === 'button') {
+      this.emitChange();
+    }
+  }
+
+  /**
+   * Set an initial value without emitting a `change` event.
+   * Used to synthesize a default label (e.g. `button0`) for `button` bindings
+   * that omit the `value` attribute.
+   */
+  setDefaultValue(v: any) {
+    if (this._value === undefined || this._value === null || this._value === '') {
+      this._value = this.parseValue(v);
     }
   }
 }

@@ -25,10 +25,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Playwright browsers
-        run: npx playwright install chromium
-
-      - name: Run tests with coverage
+      - name: Run tests
         run: npm test
         env:
           CI: true
