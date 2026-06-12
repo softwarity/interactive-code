@@ -2,6 +2,10 @@
 
 ## NEXT RELEASE
 
+---
+
+## 1.1.1
+
 ### Features
 
 - **Fold markers `${fold}` … `${/fold}`**: collapsible sections are now expressed as content markers (mirroring the block-comment `${key}…${/key}` pattern, no companion binding needed). `${fold}` starts collapsed, `${fold:open}` starts expanded. They work in any language and — unlike the previous attribute — both inside a `<textarea>` **and** via the `code` property (programmatic content). Marker lines are removed from the output and from copy/download.
