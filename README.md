@@ -4,12 +4,13 @@ A Web Component for displaying syntax-highlighted code with interactive bindings
 
 ## Features
 
-- **Syntax Highlighting**: HTML, SCSS, TypeScript, and Shell
+- **Syntax Highlighting**: HTML, SCSS, TypeScript, Shell, and JSON
 - **Interactive Bindings**: Click to edit values directly in the code
-- **Multiple Types**: boolean, number, string, select, color, comment, attribute
+- **Multiple Types**: boolean, number, string, select, color, comment, attribute, button
+- **Collapsible Sections**: Fold non-interactive line ranges with `${fold}` markers (copy/download stay complete)
 - **Theme System**: Built-in IntelliJ default + 4 external CSS themes (vscode, github, solarized, catppuccin) with light/dark variants
 - **Mixed Content Highlighting**: HTML with embedded `<style>` (SCSS) and `<script>` (TypeScript) blocks
-- **Copy to Clipboard**: Optional copy button with visual feedback
+- **Copy & Download**: Optional copy and download buttons (valid JSON export)
 - **Line Numbers**: Optional gutter line numbers
 - **Accessibility**: ARIA attributes, keyboard navigation (Enter/Space, ArrowUp/Down)
 - **Framework Agnostic**: Works with Angular, React, Vue, or vanilla JS
@@ -54,6 +55,8 @@ No build step required — the custom elements `<interactive-code>` and `<code-b
 </interactive-code>
 ```
 
+> **Escaping**: write `\${...}` to display a literal `${...}` in the code instead of interpreting it as a binding or fold marker.
+
 ## Binding Types
 
 | Type | Description | Interaction |
@@ -65,6 +68,7 @@ No build step required — the custom elements `<interactive-code>` and `<code-b
 | `color` | Color value | Click to open color picker |
 | `comment` | Line/block toggle | Click indicator to comment/uncomment (`//`, `#`, `<!-- -->`, `/* */`) |
 | `attribute` | HTML attribute toggle | Click to toggle (strikethrough when disabled) |
+| `button` | Action token (`value` = label) | Click to fire a `change` event (`e.detail` = `value`); no value edit, no re-render |
 | `readonly` | Display only | No interaction |
 
 ## API
@@ -73,10 +77,12 @@ No build step required — the custom elements `<interactive-code>` and `<code-b
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `language` | `'html' \| 'scss' \| 'typescript' \| 'shell'` | Syntax highlighting language |
+| `language` | `'html' \| 'scss' \| 'typescript' \| 'shell' \| 'json'` | Syntax highlighting language |
 | `color-scheme` | `'light' \| 'dark'` | Color scheme override (inherits from parent by default) |
 | `show-separators` | `boolean` | Show visual separators between textarea sections |
 | `show-copy` | `boolean` | Show copy-to-clipboard button (top-right corner) |
+| `show-download` | `boolean` | Show download button (exports the full content as a file) |
+| `download` | `string` | File name for the download button (defaults to `snippet.<ext>`) |
 | `show-line-numbers` | `boolean` | Show line numbers in the gutter |
 
 | Property | Type | Description |
@@ -229,6 +235,39 @@ console.log(result.groups);</textarea>
 - `condition="!key=value"` - Show when binding value does NOT equal a specific value
 - `show-separators` - Add visual separators between sections (customizable via `--code-separator-color`)
 
+### Collapsible Sections
+
+Wrap a range of lines in `${fold}` … `${/fold}` markers to make it foldable (GitHub-diff style). Collapsed by default; use `${fold:open}` to start expanded. The marker lines are removed from the output — folding is purely visual, and copy/download still export the full content. Works inside a `<textarea>` or via the `code` property, in any language.
+
+```html
+<interactive-code language="json" show-download download="config.json">
+  <textarea>{
+  "name": "${name}",
+${fold}
+  "_internal": {
+    "trace": true,
+    "buffer": 4096
+  },
+${/fold}
+  "enabled": ${enabled}
+}</textarea>
+  <code-binding key="name" type="string" value="app"></code-binding>
+  <code-binding key="enabled" type="boolean" value="true"></code-binding>
+</interactive-code>
+```
+
+### Action Button
+
+A `button` binding is a clickable token that fires a `change` event on every click (no value to edit, no re-render), with `e.detail` set to its `value` — handy for a hub of actions.
+
+```html
+<interactive-code language="typescript">
+  <textarea>await provider.${refresh}();</textarea>
+  <code-binding key="refresh" type="button" value="refresh()"
+    onchange="runAction(e.detail)"></code-binding>
+</interactive-code>
+```
+
 ## Themes
 
 The built-in default is IntelliJ (Light/Darcula). Four external CSS themes are available as separate stylesheets:
@@ -266,6 +305,7 @@ The component exposes CSS custom properties for styling. Themes and custom overr
 | `--code-text` | Foreground text color |
 | `--code-border-radius` | Border radius |
 | `--code-line-number` | Line number color |
+| `--code-gutter-width` | Width of the left gutter control column |
 | `--code-separator-color` | Separator color between textarea sections |
 | `--code-focus-outline` | Focus ring color |
 | `--code-input-bg` | Inline input background |
