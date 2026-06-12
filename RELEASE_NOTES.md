@@ -2,6 +2,10 @@
 
 ## NEXT RELEASE
 
+---
+
+## 1.1.0
+
 ### Features
 
 - **JSON language**: New `language="json"` with dedicated syntax highlighting (property keys vs string values, `true`/`false`/`null`, numbers, punctuation). JSONC `//` and `/* */` comments are displayed but stripped from copy/download so the exported content stays valid (RFC 8259).
