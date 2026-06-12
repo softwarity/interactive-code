@@ -2,6 +2,19 @@
 
 ## NEXT RELEASE
 
+### Features
+
+- **Fold markers `${fold}` … `${/fold}`**: collapsible sections are now expressed as content markers (mirroring the block-comment `${key}…${/key}` pattern, no companion binding needed). `${fold}` starts collapsed, `${fold:open}` starts expanded. They work in any language and — unlike the previous attribute — both inside a `<textarea>` **and** via the `code` property (programmatic content). Marker lines are removed from the output and from copy/download.
+- **Escaping `\${...}`**: write `\${...}` to render the literal `${...}` instead of interpreting it (binding, block comment or fold) — useful for documenting the syntax with the component itself.
+
+### Improvements
+
+- **Collapsible UI polish**: the collapsed band uses a larger double-chevron "unfold" icon (clearer than a caret), its whole row is clickable to expand, and its layout is overlap-proof (the `⋯ N lines` text can no longer overlap the icon). All fold chevrons are crisp SVGs.
+
+### Breaking changes
+
+- **Removed `collapsible` / `collapsed` `<textarea>` attributes** (introduced in 1.1.0) in favor of the `${fold}` markers above. Migrate `<textarea collapsible collapsed>…</textarea>` to a `${fold}` … `${/fold}` block (and `collapsible` without `collapsed` to `${fold:open}`).
+
 ---
 
 ## 1.1.0

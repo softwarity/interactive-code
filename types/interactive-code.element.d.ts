@@ -10,6 +10,7 @@ export declare class InteractiveCodeElement extends HTMLElement {
     private _initialized;
     private _internalChange;
     private _gutterActive;
+    private _foldState;
     private _observer;
     private _fallbackTimeout;
     private _copyTimeout;
@@ -74,6 +75,8 @@ export declare class InteractiveCodeElement extends HTMLElement {
     private renderTemplate;
     /** Build a collapsible group: a clickable band (shown when collapsed) wrapping the section lines */
     private buildFoldGroup;
+    /** SVG chevron icon used by the fold controls (stroke-based, scales crisply) */
+    private foldIconSvg;
     /** Insert a fold chevron into the gutter of a rendered line (absolute-positioned, no layout shift) */
     private injectFoldChevron;
     /** Render a single line of code with bindings, highlighting, and optional line number */
@@ -89,7 +92,7 @@ export declare class InteractiveCodeElement extends HTMLElement {
      * For JSON, comments are stripped so the exported content stays valid (RFC 8259).
      */
     private getPlainText;
-    /** Toggle the collapsed state of a fold group (CSS class only — no re-render) */
+    /** Toggle the collapsed state of a fold group (CSS class only — no re-render) and remember it */
     private toggleFold;
     /** Download the code content as a file (full content, valid JSON when language="json") */
     private downloadFile;

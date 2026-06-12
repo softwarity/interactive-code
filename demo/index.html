@@ -502,7 +502,7 @@
           <textarea>${useTheme}<link rel="stylesheet" href="https://unpkg.com/@softwarity/interactive-code/themes/${theme}.css"></textarea>
           <code-binding key="useTheme" type="comment" value="true"
             onchange="loadThemeCSS(e.detail ? this.closest('interactive-code').querySelector('[key=theme]').value : '')"></code-binding>
-          <code-binding key="theme" type="select" options="vscode,github,solarized,catppuccin" value="catppuccin"
+          <code-binding key="theme" type="select" carousel options="vscode,github,solarized,catppuccin" value="catppuccin"
             onchange="var c=this.closest('interactive-code').querySelector('[key=useTheme]'); if(String(c.value)!=='false') loadThemeCSS(e.detail)"></code-binding>
         </interactive-code>
 
@@ -1043,24 +1043,28 @@ console.log(result.groups);</textarea>
           </div>
         </article>
 
-        <!-- Collapsible Sections -->
+        <!-- Fold Sections -->
         <article class="doc-section">
           <h3>Collapsible Sections</h3>
-          <p>Add <code>collapsible</code> on a <code>&lt;textarea&gt;</code> to fold a range of non-interactive lines (GitHub-diff style). Add <code>collapsed</code> to start folded. Folding is purely visual — copy/download still export the full content:</p>
+          <p>Wrap a range of lines in <code>${fold}</code> … <code>${/fold}</code> markers to make it foldable (GitHub-diff style). Collapsed by default; use <code>${fold:open}</code> to start expanded. The marker lines are removed from the output — folding is purely visual, and copy/download still export the full content. Works inside a <code>&lt;textarea&gt;</code> or via the <code>code</code> property, in any language. Bindings <strong>inside</strong> a fold stay fully interactive — they're just hidden until expanded (here <code>trace</code> and <code>buffer</code> are editable once you open the block).</p>
 
           <div class="code-header"><span>Written by developer</span></div>
           <interactive-code class="inline-code" language="html" show-copy>
             <textarea><interactive-code language="json" ${show-line-numbers} ${show-copy}>
   <textarea>{
-  "id": "${id}",&lt;/textarea>
-  <textarea collapsible collapsed>  "_internal": {
-    "trace": true,
+  "id": "${id}",
+\${fold}
+  "_internal": {
+    "trace": ${trace},
     "verbose": false,
-    "buffer": 4096
-  },&lt;/textarea>
-  <textarea>  "enabled": ${enabled}
+    "buffer": ${buffer}
+  },
+\${/fold}
+  "enabled": ${enabled}
 }&lt;/textarea>
   <code-binding key="id" type="string" value="api"></code-binding>
+  <code-binding key="trace" type="boolean" value="true"></code-binding>
+  <code-binding key="buffer" type="number" value="4096" min="512" max="8192" step="512"></code-binding>
   <code-binding key="enabled" type="boolean" value="true"></code-binding>
 </interactive-code></textarea>
             <code-binding key="show-line-numbers" type="attribute" value="true"
@@ -1070,25 +1074,31 @@ console.log(result.groups);</textarea>
           </interactive-code>
 
           <div class="preview-wrapper">
-            <div class="preview-label">Seen by user (click the band to expand, copy to get the full JSON)</div>
+            <div class="preview-label">Seen by user (expand the band, then edit the values inside the fold)</div>
             <div class="user-view">
               <interactive-code language="json" show-line-numbers show-copy>
                 <textarea>{
-  "id": "${id}",</textarea>
-                <textarea collapsible collapsed>  "_internal": {
-    "trace": true,
+  "id": "${id}",
+${fold}
+  "_internal": {
+    "trace": ${trace},
     "verbose": false,
-    "buffer": 4096
-  },</textarea>
-                <textarea>  "enabled": ${enabled}
+    "buffer": ${buffer}
+  },
+${/fold}
+  "enabled": ${enabled}
 }</textarea>
                 <code-binding key="id" type="string" value="api"
+                  onchange="updateFoldPreview(this)"></code-binding>
+                <code-binding key="trace" type="boolean" value="true"
+                  onchange="updateFoldPreview(this)"></code-binding>
+                <code-binding key="buffer" type="number" value="4096" min="512" max="8192" step="512"
                   onchange="updateFoldPreview(this)"></code-binding>
                 <code-binding key="enabled" type="boolean" value="true"
                   onchange="updateFoldPreview(this)"></code-binding>
               </interactive-code>
               <div class="live-element">
-                <div id="preview-fold" class="preview-card" style="border-color: var(--accent-purple);">id: api &middot; enabled: true</div>
+                <div id="preview-fold" class="preview-card" style="border-color: var(--accent-purple);">id: api &middot; trace: true &middot; buffer: 4096 &middot; enabled: true</div>
               </div>
             </div>
           </div>
@@ -1336,9 +1346,8 @@ interactive-code {
           <ul class="feature-list">
             <li><code>condition="key"</code> - Show when binding value is truthy</li>
             <li><code>condition="!key"</code> - Show when binding value is falsy</li>
-            <li><code>collapsible</code> - Make the section foldable (band shows the hidden line count)</li>
-            <li><code>collapsed</code> - Start the section folded (requires <code>collapsible</code>)</li>
           </ul>
+          <p>Fold a range of lines with <code>${fold}</code> … <code>${/fold}</code> markers (collapsed by default) or <code>${fold:open}</code> … <code>${/fold}</code> (expanded). The band shows the hidden line count; folding is visual only (copy/download stay complete).</p>
         </article>
 
         <!-- API - CodeBindingElement -->
@@ -1550,12 +1559,12 @@ interactive-code {
         'theme: ' + theme + ' · ' + fontSize + 'px · ' + (notif ? '🔔 on' : '🔕 off');
     }
 
-    // Collapsible demo: reflect id/enabled into the live element
+    // Collapsible demo: reflect values (including the ones inside the fold) into the live element
     function updateFoldPreview(binding) {
       var ic = binding.closest('interactive-code');
-      var id = ic.querySelector('code-binding[key=id]').value;
-      var enabled = ic.querySelector('code-binding[key=enabled]').value;
-      document.getElementById('preview-fold').textContent = 'id: ' + id + ' · enabled: ' + enabled;
+      var get = function(k) { var b = ic.querySelector('code-binding[key=' + k + ']'); return b ? b.value : ''; };
+      document.getElementById('preview-fold').textContent =
+        'id: ' + get('id') + ' · trace: ' + get('trace') + ' · buffer: ' + get('buffer') + ' · enabled: ' + get('enabled');
     }
 
     // Apply initial interactive style (hand-drawn)

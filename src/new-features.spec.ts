@@ -90,11 +90,13 @@ describe('New features', () => {
       element.setAttribute('language', 'json');
       element.innerHTML = `
         <textarea>{
-  "id": "\${id}",</textarea>
-        <textarea collapsible collapsed>  "x": 1,
+  "id": "\${id}",
+\${fold}
+  "x": 1,
   "y": 2,
-  "z": 3,</textarea>
-        <textarea>  "ok": \${ok}
+  "z": 3,
+\${/fold}
+  "ok": \${ok}
 }</textarea>
         <code-binding key="id" type="string" value="api"></code-binding>
         <code-binding key="ok" type="boolean" value="true"></code-binding>
@@ -115,9 +117,9 @@ describe('New features', () => {
       const linesInGroup = group.querySelectorAll('.code-line');
       expect(linesInGroup.length).toBe(3);
 
-      // Gutter chevrons on first and last folded line (the band has its own chevron too)
+      // Gutter chevrons on first and last folded line; the band has its own expand icon
       expect(group.querySelectorAll('.code-line .fold-chevron-gutter').length).toBe(2);
-      expect(band.querySelector('.fold-chevron-gutter')).not.toBeNull();
+      expect(band.querySelector('.fold-band-icon svg')).not.toBeNull();
 
       // Export contains the full content, including folded lines
       const exported = (element as any).getPlainText() as string;
@@ -126,12 +128,128 @@ describe('New features', () => {
       expect(exported).toContain('"ok": true');
     });
 
+    it('supports public ${fold} markers (collapsed by default) and ${fold:open} (expanded)', async () => {
+      element.setAttribute('language', 'json');
+      document.body.appendChild(element);
+      await settle();
+      element.code = [
+        '{',
+        '  "a": {',
+        '${fold}',
+        '    "x": 1,',
+        '    "y": 2',
+        '${/fold}',
+        '  },',
+        '  "b": [',
+        '${fold:open}',
+        '    1, 2, 3',
+        '${/fold}',
+        '  ]',
+        '}',
+      ].join('\n');
+      await settle();
+
+      const code = element.shadowRoot!.querySelector('code')!;
+      const groups = code.querySelectorAll('.fold-group');
+      expect(groups.length).toBe(2);
+      expect(groups[0].classList.contains('collapsed')).toBe(true);   // ${fold}
+      expect(groups[1].classList.contains('collapsed')).toBe(false);  // ${fold:open}
+      // Marker lines themselves are not rendered and are absent from the export
+      const exported = (element as any).getPlainText() as string;
+      expect(exported).not.toContain('${fold');
+      expect(exported).toContain('"x": 1');
+    });
+
+    it('shows escaped markers (\\${fold}, \\${binding}) literally without interpreting them', async () => {
+      element.setAttribute('language', 'json');
+      document.body.appendChild(element);
+      await settle();
+      element.code = '{\n\\${fold}\n  "id": "\\${id}"\n\\${/fold}\n}';
+      await settle();
+
+      const code = element.shadowRoot!.querySelector('code')!;
+      // Escaped markers do not create a fold and are not bindings
+      expect(code.querySelector('.fold-group')).toBeNull();
+      expect(code.textContent).toContain('${fold}');
+      expect(code.textContent).toContain('${id}');
+      // No stray backslash is shown
+      expect(code.textContent).not.toContain('\\${');
+    });
+
+    it('keeps interactive bindings inside a fold (rendered in the group, editable once expanded)', async () => {
+      element.setAttribute('language', 'json');
+      element.innerHTML = `
+        <textarea>{
+\${fold}
+  "count": \${count}
+\${/fold}
+}</textarea>
+        <code-binding key="count" type="number" value="42"></code-binding>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const group = element.shadowRoot!.querySelector('.fold-group')!;
+      // The number control is rendered inside the folded group
+      const control = group.querySelector('.inline-number');
+      expect(control).not.toBeNull();
+      expect(control!.querySelector('.token-number')!.textContent).toBe('42');
+    });
+
+    it('preserves the user expand/collapse choice across re-renders (editing a binding)', async () => {
+      element.setAttribute('language', 'json');
+      element.innerHTML = `
+        <textarea>{
+\${fold}
+  "trace": \${trace}
+\${/fold}
+}</textarea>
+        <code-binding key="trace" type="boolean" value="true"></code-binding>
+      `;
+      document.body.appendChild(element);
+      await settle();
+
+      const shadow = element.shadowRoot!;
+      let group = shadow.querySelector('.fold-group')!;
+      expect(group.classList.contains('collapsed')).toBe(true);
+
+      // Expand it like the user clicking the band
+      (group.querySelector('.fold-band') as HTMLElement)
+        .dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+      expect(group.classList.contains('collapsed')).toBe(false);
+
+      // Editing the binding inside the fold triggers a full re-render
+      (element.querySelector('code-binding') as CodeBindingElement).value = false;
+      await settle();
+
+      // The fold must stay expanded (not snap back to the ${fold} default)
+      group = shadow.querySelector('.fold-group')!;
+      expect(group.classList.contains('collapsed')).toBe(false);
+    });
+
+    it('reserves the control column for folds set via the code property', async () => {
+      element.setAttribute('language', 'json');
+      document.body.appendChild(element);
+      await settle();
+      // ${fold} markers work straight from the code string too (programmatic content)
+      element.code = '{\n${fold}\n  "a": 1,\n  "b": 2\n${/fold}\n}';
+      await settle();
+
+      const code = element.shadowRoot!.querySelector('code')!;
+      expect(code.classList.contains('has-controls')).toBe(true);
+      const group = code.querySelector('.fold-group');
+      expect(group).not.toBeNull();
+      expect(group!.querySelector('.fold-band-icon svg')).not.toBeNull();
+    });
+
     it('toggles the collapsed state when the band is clicked (no re-render)', async () => {
       element.setAttribute('language', 'json');
       element.innerHTML = `
-        <textarea>{</textarea>
-        <textarea collapsible collapsed>  "a": 1,</textarea>
-        <textarea>}</textarea>
+        <textarea>{
+\${fold}
+  "a": 1
+\${/fold}
+}</textarea>
       `;
       document.body.appendChild(element);
       await settle();
@@ -238,12 +356,14 @@ describe('New features', () => {
       expect(hasGutter(element)).toBe(true);
     });
 
-    it('reserves the gutter when a collapsible section exists', async () => {
+    it('reserves the gutter when a fold marker exists', async () => {
       element.setAttribute('language', 'json');
       element.innerHTML = `
-        <textarea>{</textarea>
-        <textarea collapsible>  "a": 1</textarea>
-        <textarea>}</textarea>
+        <textarea>{
+\${fold}
+  "a": 1
+\${/fold}
+}</textarea>
       `;
       document.body.appendChild(element);
       await settle();

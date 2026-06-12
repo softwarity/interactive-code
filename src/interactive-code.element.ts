@@ -33,8 +33,6 @@ type Language = 'html' | 'scss' | 'typescript' | 'shell' | 'json';
 interface ConditionalContent {
   content: string;
   condition: string | null; // null means always show
-  collapsible: boolean;     // whether this section can be folded
-  collapsed: boolean;       // initial folded state (only meaningful when collapsible)
 }
 
 interface CommentStyle {
@@ -58,6 +56,7 @@ export class InteractiveCodeElement extends HTMLElement {
   private _initialized = false;
   private _internalChange = false;
   private _gutterActive = false;
+  private _foldState = new Map<string, boolean>(); // fold id → collapsed (user override, persisted across re-renders)
 
   // References for cleanup
   private _observer: MutationObserver | null = null;
@@ -252,9 +251,7 @@ export class InteractiveCodeElement extends HTMLElement {
           .replace(/\n\s*$/, '') // Remove trailing whitespace
           || '';
         const condition = textarea.getAttribute('condition');
-        const collapsible = textarea.hasAttribute('collapsible');
-        const collapsed = textarea.hasAttribute('collapsed');
-        this.conditionalContents.push({ content, condition, collapsible, collapsed });
+        this.conditionalContents.push({ content, condition });
       });
 
       // For backwards compatibility, also set templateContent from first unconditional or all
@@ -268,7 +265,7 @@ export class InteractiveCodeElement extends HTMLElement {
       this.templateContent = template.innerHTML
         .replace(/^\n/, '')
         .replace(/\n\s*$/, '');
-      this.conditionalContents = [{ content: this.templateContent, condition: null, collapsible: false, collapsed: false }];
+      this.conditionalContents = [{ content: this.templateContent, condition: null }];
     }
   }
 
@@ -276,16 +273,11 @@ export class InteractiveCodeElement extends HTMLElement {
     // Evaluate conditions and concatenate matching content
     const parts: string[] = [];
 
-    this.conditionalContents.forEach((cc, index) => {
-      if (!this.evaluateCondition(cc.condition)) return;
-      if (cc.collapsible) {
-        // Wrap collapsible sections with fold markers (rendered as a foldable group).
-        // The index is used as a stable fold id across re-renders.
-        parts.push(`__FOLD_START_${index}_${cc.collapsed ? 1 : 0}__\n${cc.content}\n__FOLD_END_${index}__`);
-      } else {
-        parts.push(cc.content);
+    for (const { content, condition } of this.conditionalContents) {
+      if (this.evaluateCondition(condition)) {
+        parts.push(content);
       }
-    });
+    }
 
     // Join with separator marker if show-separators is enabled and multiple parts
     if (this.showSeparators && parts.length > 1) {
@@ -635,11 +627,11 @@ export class InteractiveCodeElement extends HTMLElement {
     if (this.conditionalContents.length > 0) {
       this.updateTemplateContent();
     }
-    // The left gutter rail is reserved when there are line numbers, collapsible
-    // sections, or comment toggles. The control column (fold chevrons + comment
-    // toggles, before the numbers) only exists for folds/comments.
+    // The left gutter rail is reserved when there are line numbers, fold markers,
+    // or comment toggles. The control column (fold chevrons + comment toggles,
+    // before the numbers) only exists for folds/comments.
     const hasNumbers = this.showLineNumbers;
-    const hasControls = this.conditionalContents.some(cc => cc.collapsible)
+    const hasControls = /\$\{fold(:open)?\}/.test(this.templateContent)
       || Array.from(this.bindings.values()).some(b => b.type === 'comment');
     this._gutterActive = hasNumbers || hasControls;
     const html = this.renderTemplate();
@@ -706,22 +698,24 @@ export class InteractiveCodeElement extends HTMLElement {
     // Track mixed content zones for HTML language
     let currentZone: Language = this.language;
 
-    // Buffer used to collect the lines of a collapsible section before wrapping them
+    // Buffer used to collect the lines of a ${fold} section before wrapping them
     let foldBuffer: string[] | null = null;
     let foldId = '';
     let foldCollapsed = false;
+    let markerFoldCount = 0; // ids for public ${fold} markers
 
     for (const line of lines) {
-      // Fold section markers (inserted by updateTemplateContent for collapsible textareas)
-      const foldStart = line.match(/^__FOLD_START_(\d+)_(\d)__$/);
-      if (foldStart) {
-        foldId = foldStart[1];
-        foldCollapsed = foldStart[2] === '1';
+      // Fold markers (any language, usable in textareas or the `code` property):
+      // ${fold} … ${/fold} → collapsed by default; ${fold:open} … ${/fold} → expanded by default.
+      // The marker lines are removed from the output (and from copy/download). No nesting.
+      const foldStart = line.match(/^\s*\$\{fold(:open)?\}\s*$/);
+      if (foldStart && foldBuffer === null) {
+        foldId = `f${markerFoldCount++}`;
+        foldCollapsed = !foldStart[1]; // collapsed unless ":open"
         foldBuffer = [];
         continue;
       }
-      const foldEnd = line.match(/^__FOLD_END_(\d+)__$/);
-      if (foldEnd && foldBuffer) {
+      if (/^\s*\$\{\/fold\}\s*$/.test(line) && foldBuffer !== null) {
         renderedLines.push(this.buildFoldGroup(foldId, foldCollapsed, foldBuffer));
         foldBuffer = null;
         continue;
@@ -778,21 +772,35 @@ export class InteractiveCodeElement extends HTMLElement {
   private buildFoldGroup(id: string, collapsed: boolean, lines: string[]): string {
     const count = lines.length;
     const decorated = [...lines];
+    // Preserve the user's expand/collapse choice across re-renders (binding edits re-render the
+    // whole code); fall back to the marker default (${fold} collapsed / ${fold:open} expanded).
+    const isCollapsed = this._foldState.has(id) ? this._foldState.get(id)! : collapsed;
     // Add a collapse chevron in the gutter of the first and last line of the block
     if (decorated.length > 0) {
       decorated[0] = this.injectFoldChevron(decorated[0], id, 'top');
       decorated[decorated.length - 1] = this.injectFoldChevron(decorated[decorated.length - 1], id, 'bottom');
     }
+    // Band is a flex row [expand icon][text] so the icon and "⋯ N lines" can never overlap,
+    // regardless of the gutter width. The icon is a double chevron (unfold), clearer than a caret.
     const band = `<span class="fold-band" role="button" tabindex="0" data-fold-toggle="${id}" aria-label="Expand ${count} hidden lines">` +
-      `<span class="fold-chevron-gutter" aria-hidden="true">&#9656;</span>` +
+      `<span class="fold-band-icon" aria-hidden="true">${this.foldIconSvg('expand')}</span>` +
       `<span class="fold-band-text">&#8943; ${count} lines</span></span>`;
-    return `<span class="fold-group${collapsed ? ' collapsed' : ''}" data-fold="${id}">${band}${decorated.join('')}</span>`;
+    return `<span class="fold-group${isCollapsed ? ' collapsed' : ''}" data-fold="${id}">${band}${decorated.join('')}</span>`;
+  }
+
+  /** SVG chevron icon used by the fold controls (stroke-based, scales crisply) */
+  private foldIconSvg(kind: 'expand' | 'top' | 'bottom'): string {
+    const polylines = {
+      expand: '<polyline points="6 9 12 4 18 9"/><polyline points="6 15 12 20 18 15"/>', // up + down (unfold)
+      top: '<polyline points="6 10 12 16 18 10"/>',    // points down
+      bottom: '<polyline points="6 14 12 8 18 14"/>',  // points up
+    }[kind];
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${polylines}</svg>`;
   }
 
   /** Insert a fold chevron into the gutter of a rendered line (absolute-positioned, no layout shift) */
   private injectFoldChevron(lineHtml: string, id: string, position: 'top' | 'bottom'): string {
-    const glyph = position === 'top' ? '&#9662;' : '&#9652;'; // ▾ / ▴
-    const chevron = `<span class="fold-chevron-gutter" role="button" tabindex="0" data-fold-toggle="${id}" aria-label="Collapse section">${glyph}</span>`;
+    const chevron = `<span class="fold-chevron-gutter" role="button" tabindex="0" data-fold-toggle="${id}" aria-label="Collapse section">${this.foldIconSvg(position)}</span>`;
     return lineHtml.replace(/^(<span class="code-line[^"]*">)/, `$1${chevron}`);
   }
 
@@ -852,8 +860,16 @@ export class InteractiveCodeElement extends HTMLElement {
     const blockStartsOnLine: string[] = [];
     const blockEndsOnLine: string[] = [];
 
+    // Escaped markers: `\${...}` renders the literal `${...}` instead of being interpreted
+    // (binding, block comment or fold). Used to document the component's own syntax.
+    let processed = content.replace(/\\\$\{([^}]*)\}/g, (_, inner) => {
+      const marker = `__ESCAPED_${markerIndex++}__`;
+      markers.set(marker, `<span class="token-unknown">\${${this.escapeHtml(inner)}}</span>`);
+      return marker;
+    });
+
     // Handle bindings - capture optional ="value" for attribute type
-    let processed = content.replace(/\$\{([\w-]+)\}(="[^"]*")?/g, (_, key, attrValue) => {
+    processed = processed.replace(/\$\{([\w-]+)\}(="[^"]*")?/g, (_, key, attrValue) => {
       const binding = this.bindings.get(key);
       if (binding?.type === 'comment' && blockCommentKeys.has(key)) {
         // This is a block comment start marker
@@ -1046,11 +1062,14 @@ export class InteractiveCodeElement extends HTMLElement {
     return lines.join('\n');
   }
 
-  /** Toggle the collapsed state of a fold group (CSS class only — no re-render) */
+  /** Toggle the collapsed state of a fold group (CSS class only — no re-render) and remember it */
   private toggleFold(id: string | undefined) {
     if (!id) return;
     const group = this.shadow.querySelector(`.fold-group[data-fold="${id}"]`);
-    group?.classList.toggle('collapsed');
+    if (!group) return;
+    group.classList.toggle('collapsed');
+    // Persist so a later re-render (e.g. editing a binding) keeps the user's choice
+    this._foldState.set(id, group.classList.contains('collapsed'));
   }
 
   /** Download the code content as a file (full content, valid JSON when language="json") */
@@ -1577,19 +1596,31 @@ export class InteractiveCodeElement extends HTMLElement {
         border-color: var(--code-copy-accent, light-dark(#20999d, #769aa5));
       }
 
-      /* Collapsible sections (textarea[collapsible]) */
+      /* Fold sections (rendered from fold markers) */
       .fold-group {
         display: block;
       }
 
+      /* Flex row [icon][text] — icon and "⋯ N lines" can never overlap, whatever the gutter width */
       .fold-band {
         display: none;
-        position: relative;
+        align-items: center;
+        gap: 0.45em;
         cursor: pointer;
         user-select: none;
-        color: var(--code-line-number, light-dark(rgba(0,0,0,0.45), rgba(255,255,255,0.4)));
-        padding: 1px 4px 1px calc(var(--_ctrl) + var(--_num));
+        color: var(--code-line-number, light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.45)));
+        padding: 1px 6px 1px 0.1em;
         border-radius: var(--code-interactive-border-radius, 3px);
+      }
+
+      .fold-band-icon {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .fold-band-icon svg {
+        width: 15px;
+        height: 15px;
       }
 
       .fold-band:hover {
@@ -1606,18 +1637,26 @@ export class InteractiveCodeElement extends HTMLElement {
         display: none;
       }
 
+      /* flex (not inline-flex) so the band fills the whole row — the entire line is clickable */
       .fold-group.collapsed > .fold-band {
-        display: inline-block;
+        display: flex;
       }
 
       /* Collapse chevrons sit at the far left of the gutter rail, without shifting line content */
       .fold-chevron-gutter {
         position: absolute;
-        left: 0.2em;
+        left: 0.15em;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
         cursor: pointer;
         user-select: none;
-        font-size: 11px;
-        color: var(--code-line-number, light-dark(rgba(0,0,0,0.4), rgba(255,255,255,0.35)));
+        color: var(--code-line-number, light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.4)));
+      }
+
+      .fold-chevron-gutter svg {
+        width: 13px;
+        height: 13px;
       }
 
       .fold-chevron-gutter:hover {
